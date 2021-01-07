@@ -18,8 +18,8 @@
 
 size_t g_CurrentIndex = 0;
 std::vector<uint8_t> g_Target;
-std::map<size_t, std::shared_ptr<PreimageContext>> g_Contexts;
-std::vector<std::shared_ptr<PreimageContext>> g_Queue;
+std::map<size_t, PreimageContextPtr> g_Contexts;
+std::vector<PreimageContextPtr> g_Queue;
 std::vector<std::thread> g_Threads;
 std::mutex g_Lock;
 std::atomic<bool> g_Stop;
@@ -32,7 +32,7 @@ ClearBacklog(void)
 		if (c->GetLastIndex() >= g_CurrentIndex + 1000)
 		{
 			if (c->GetEntryCount() > 0)
-				g_Queue.push_back(c);
+				g_Queue.push_back(std::move(c));
 			// Haven't seen this length for a while so delete it entirely
 			g_Contexts.erase(l);
 		}
@@ -59,7 +59,7 @@ Worker(void)
 		g_Lock.lock();
 		if (!g_Queue.empty())
 		{
-			ctx = g_Queue.back();
+			ctx = std::move(g_Queue.back());
 			g_Queue.pop_back();
 			gotJob = true;
 		}
@@ -86,16 +86,16 @@ AddWord(std::string Word)
 	
 	g_CurrentIndex++;
 	
-	if (g_Contexts[length] == nullptr)
+	if (g_Contexts.find(length) == g_Contexts.end())
 	{
-		g_Contexts[length] = std::make_shared<PreimageContext>(length, g_Target);
+		g_Contexts[length] = std::make_unique<PreimageContext>(length, g_Target);
 		g_Contexts[length]->Initialize(length, g_Target);
 	}
 	
 	g_Contexts[length]->AddEntry(Word, g_CurrentIndex);
 	if (g_Contexts[length]->IsFull())
 	{
-		g_Queue.push_back(g_Contexts[length]);
+		g_Queue.push_back(std::move(g_Contexts[length]));
 		g_Contexts.erase(length);
 	}
 	

@@ -12,17 +12,18 @@
 #include <vector>
 #include <cstdint>
 #include <string>
+#include <memory>
 #include <simdhash.h>
 
 class PreimageContext{
 public:
 	PreimageContext(void) = default;
-	PreimageContext(const size_t Length, std::vector<uint8_t> Target);
+	PreimageContext(const size_t Length, std::vector<uint8_t>& Target);
 	~PreimageContext(void);
-	void   Initialize(const size_t Length, std::vector<uint8_t> Target);
+	void   Initialize(const size_t Length, std::vector<uint8_t>& Target);
 	void   Reset(void);
-	void   AddEntry(std::string Value);
-	void   AddEntry(std::string Value, const size_t Index);
+	void   AddEntry(std::string& Value);
+	void   AddEntry(std::string& Value, const size_t Index);
 	size_t GetEntryCount(void);
 	bool   IsFull(void);
 	bool   Check(void);
@@ -39,5 +40,7 @@ private:
 	std::string mMatch;
 	size_t   mLastIndex = 0;
 };
+
+using PreimageContextPtr = std::unique_ptr<PreimageContext>;
 
 #endif /* PreimageContext_hpp */

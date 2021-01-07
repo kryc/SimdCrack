@@ -15,7 +15,7 @@
 
 PreimageContext::PreimageContext(
 	const size_t Length,
-	std::vector<uint8_t> Target)
+	std::vector<uint8_t>& Target)
 {
 	Initialize(Length, Target);
 }
@@ -23,7 +23,7 @@ PreimageContext::PreimageContext(
 void
 PreimageContext::Initialize(
 	const size_t Length,
-	std::vector<uint8_t> Target)
+	std::vector<uint8_t>& Target)
 {
 	mTarget = Target;
 	mLength = Length;
@@ -60,7 +60,7 @@ PreimageContext::~PreimageContext(
 }
 
 void
-PreimageContext::AddEntry(std::string Value)
+PreimageContext::AddEntry(std::string& Value)
 {
 	if (IsFull())
 		return;
@@ -72,11 +72,11 @@ PreimageContext::AddEntry(std::string Value)
 	}
 	
 	char* nextEntry = (char*)mBufferPointers[mNextEntry++];
-	memcpy(nextEntry, Value.data(), mLength);
+	memcpy(nextEntry, &Value[0], mLength);
 }
 
 void
-PreimageContext::AddEntry(std::string Value, const size_t Index)
+PreimageContext::AddEntry(std::string& Value, const size_t Index)
 {
 	mLastIndex = Index;
 	AddEntry(Value);
