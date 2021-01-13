@@ -10,6 +10,7 @@
 #include <iostream>
 #include <vector>
 #include <cstdint>
+#include <cstring>
 #include "PreimageContext.hpp"
 #include <simdhash.h>
 
