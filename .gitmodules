@@ -1,0 +1,3 @@
+[submodule "SimdHash"]
+	path = SimdHash
+	url = https://github.com/kryc/SimdHash.git
