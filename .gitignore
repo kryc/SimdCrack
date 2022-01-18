@@ -1,2 +1,5 @@
 SimdCrack.xcodeproj/project.xcworkspace/xcuserdata/
 SimdCrack.xcodeproj/xcuserdata/
+SimdCrack/*.d
+SimdCrack/*.o
+SimdCrack/simdcrack
