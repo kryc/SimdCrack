@@ -109,7 +109,7 @@ PreimageContext::Check(void)
 
 	SimdSha256Update(&sha2Context, mLength, (const uint8_t**)mBufferPointers);
 	SimdSha256Finalize(&sha2Context);
-	SimdSha256GetHashes(&sha2Context, (uint8_t*)hashes);
+	SimdSha256GetHashesUnrolled(&sha2Context, (uint8_t*)hashes);
 
 	for (size_t index = 0; index < GetEntryCount(); index++)
 	{
