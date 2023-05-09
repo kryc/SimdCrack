@@ -44,10 +44,6 @@ PreimageContext::Initialize(
 	{
 		mBufferPointers[i] = &mBuffer[mLength * i];
 	}
-	
-	SimdSha2Context sha2Context;
-	SimdSha256Init(&sha2Context, SIMD_COUNT);
-	SimdSha256SecondPreimageInit(&mSha2PreimageContext, &sha2Context, mTarget.data());
 }
 
 PreimageContext::~PreimageContext(
@@ -83,6 +79,14 @@ PreimageContext::AddEntry(std::string& Value, const size_t Index)
 	AddEntry(Value);
 }
 
+std::string
+PreimageContext::GetEntry(
+	const size_t Index
+)
+{
+	return std::string((char*)mBufferPointers[Index], mLength);
+}
+
 size_t
 PreimageContext::GetEntryCount(void)
 {
@@ -98,13 +102,38 @@ PreimageContext::IsFull(void)
 bool
 PreimageContext::Check(void)
 {
-	size_t result = SimdSha256SecondPreimage(&mSha2PreimageContext, (const size_t)mLength, (const uint8_t**)mBufferPointers);
+	ALIGN(32) SimdShaContext sha2Context;
+	SimdSha256Init(&sha2Context, SIMD_COUNT);
+#ifndef USE_SECONDPREIMAGE
+	uint8_t hashes[SHA256_SIZE * SIMD_COUNT];
+
+	SimdSha256Update(&sha2Context, mLength, (const uint8_t**)mBufferPointers);
+	SimdSha256Finalize(&sha2Context);
+	SimdSha256GetHashes(&sha2Context, (uint8_t*)hashes);
+
+	for (size_t index = 0; index < GetEntryCount(); index++)
+	{
+		if (memcmp(&hashes[index * SHA256_SIZE], &mTarget[0], SHA256_SIZE) == 0)
+		{
+			mMatch = std::string((char*)mBufferPointers[index], mLength);
+			return true;
+		}
+	}
+	return false;
+#else
+	ALIGN(32) SimdSha2SecondPreimageContext sha2PreimageContext;
+	
+	SimdSha256SecondPreimageInit(&sha2PreimageContext, &sha2Context, mTarget.data());
+
+
+	size_t result = SimdSha256SecondPreimage(&sha2PreimageContext, (const size_t)mLength, (const uint8_t**)mBufferPointers);
 	if (result != (size_t)-1)
 	{
 		mMatch = std::string((char*)mBufferPointers[result], mLength);
 		return true;
 	}
 	return false;
+#endif
 }
 
 std::string
@@ -120,7 +149,7 @@ PreimageContext::Reset(void)
 	mNextEntry = 0;
 	mMatch.resize(0);
 	
-	SimdSha2Context sha2Context;
-	SimdSha256Init(&sha2Context, SIMD_COUNT);
-	SimdSha256SecondPreimageInit(&mSha2PreimageContext, &sha2Context, mTarget.data());
+	// SimdShaContext sha2Context;
+	// SimdSha256Init(&mSha2Context, SIMD_COUNT);
+	// SimdSha256SecondPreimageInit(&mSha2PreimageContext, &sha2Context, mTarget.data());
 }

@@ -55,7 +55,10 @@ Worker(void)
 		gotJob = false;
 		
 		if (g_Stop == true)
+		{
+			// std::cout << "Stopping worker thread" << std::endl;
 			break;
+		}
 		
 		g_Lock.lock();
 		if (!g_Queue.empty())
@@ -65,7 +68,13 @@ Worker(void)
 			gotJob = true;
 		}
 		g_Lock.unlock();
-		
+
+		// if (gotJob)
+		// {
+		// 	std::lock_guard<std::mutex> l(g_Lock);
+		// 	std::cout << ctx->GetEntry(0) << std::endl;
+		// }
+
 		if (gotJob && ctx->Check())
 		{
 			std::lock_guard<std::mutex> l(g_Lock);
@@ -82,6 +91,8 @@ AddWord(std::string Word)
 	
 	if (Word.size() == 0)
 		return;
+
+	// std::cout << Word << std::endl;
 	
 	std::lock_guard<std::mutex> l(g_Lock);
 	
@@ -97,6 +108,7 @@ AddWord(std::string Word)
 	if (g_Contexts[length]->IsFull())
 	{
 		g_Queue.push_back(std::move(g_Contexts[length]));
+		// std::cout << "Queue length " << g_Queue.size() << std::endl;
 		g_Contexts.erase(length);
 	}
 	
@@ -133,7 +145,9 @@ int main(int argc, const char * argv[]) {
 	std::string line;
 	for(;;)
 	{
-		AddWord(wg.Next());
+		line = wg.Next();
+		// std::cout << line << std::endl;
+		AddWord(line);
 	}
 	// while (std::getline(std::cin, line) && g_Stop == false)
 	// {

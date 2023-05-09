@@ -24,6 +24,7 @@ public:
 	void   Reset(void);
 	void   AddEntry(std::string& Value);
 	void   AddEntry(std::string& Value, const size_t Index);
+	std::string GetEntry(const size_t Index);
 	size_t GetEntryCount(void);
 	bool   IsFull(void);
 	bool   Check(void);
@@ -31,7 +32,8 @@ public:
 	size_t GetLength(void) { return mLength; };
 	size_t GetLastIndex(void) { return mLastIndex; };
 private:
-	SimdSha2SecondPreimageContext mSha2PreimageContext;
+	// ALIGN(32) SimdShaContext mSha2Context;
+	// SimdSha2SecondPreimageContext mSha2PreimageContext;
 	size_t mLength = 0;
 	std::vector<uint8_t> mTarget;
 	uint8_t* mBuffer = nullptr;
