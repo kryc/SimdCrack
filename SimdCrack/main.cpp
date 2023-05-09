@@ -15,6 +15,7 @@
 #include <atomic>
 #include "PreimageContext.hpp"
 #include "Util.hpp"
+#include "WordGenerator.hpp"
 
 size_t g_CurrentIndex = 0;
 std::vector<uint8_t> g_Target;
@@ -112,7 +113,9 @@ AddWord(std::string Word)
 
 int main(int argc, const char * argv[]) {
 	std::string targetHex;
-	
+	WordGenerator wg;
+
+
 	if (argc < 2)
 	{
 		std::cerr << "Usage: " << argv[0] << " <target>" << std::endl;
@@ -128,10 +131,14 @@ int main(int argc, const char * argv[]) {
 		g_Threads.push_back(std::thread(Worker));
 	
 	std::string line;
-	while (std::getline(std::cin, line) && g_Stop == false)
+	for(;;)
 	{
-		AddWord(line);
+		AddWord(wg.Next());
 	}
+	// while (std::getline(std::cin, line) && g_Stop == false)
+	// {
+	// 	AddWord(line);
+	// }
 	
 	{
 		std::lock_guard<std::mutex> l(g_Lock);
