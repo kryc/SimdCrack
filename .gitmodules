@@ -1,3 +1,6 @@
 [submodule "SimdHash"]
 	path = SimdCrack/SimdHash
 	url = https://github.com/kryc/SimdHash.git
+[submodule "SimdCrack/libdispatchqueue"]
+	path = SimdCrack/libdispatchqueue
+	url = https://github.com/kryc/libdispatchqueue.git

@@ -3,7 +3,8 @@ cmake_minimum_required(VERSION 3.10)
 # set the project name
 project(simdcrack VERSION 0.1)
 
-add_subdirectory(./SimdHash/SimdHash/)
+add_subdirectory(./SimdHash/)
+add_subdirectory(./libdispatchqueue/)
 
 # specify clang
 SET(CMAKE_C_COMPILER clang)
@@ -14,14 +15,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # set compiler flags
-set(STD_COMPILE_FLAGS "-Wall -Werror -fno-exceptions")
+set(STD_COMPILE_FLAGS "-Wall -Werror -fno-exceptions -g -ggdb")
 set(STD_LINKER_FLAGS "-lpthread")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STD_COMPILE_FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${STD_COMPILE_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${STD_LINKER_FLAGS}")
 
-set(CMAKE_CXX_FLAGS_DEBUG "-ggdb -fno-omit-frame-pointer -fsanitize=address -DDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-ggdb -fno-omit-frame-pointer -DDEBUG")
 
 if(APPLE)
     set(HOMEBREW_PREFIX "/usr/local" CACHE PATH "Path to Homebrew installation")
@@ -36,6 +37,7 @@ target_include_directories(simdcrack
                             PUBLIC
                                 ./src/
                                 ./SimdHash/SimdHash/
+                                ./libdispatchqueue/include/
                                 ${HOMEBREW_INCLUDE}
                         )
-target_link_libraries(simdcrack simdhash)
+target_link_libraries(simdcrack simdhash dispatchqueue)

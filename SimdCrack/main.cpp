@@ -16,15 +16,10 @@
 #include "PreimageContext.hpp"
 #include "Util.hpp"
 #include "WordGenerator.hpp"
+#include "DispatchQueue.hpp"
+#include "SimdCrack.hpp"
 
-size_t g_CurrentIndex = 0;
-std::vector<uint8_t> g_Target;
-std::map<size_t, PreimageContextPtr> g_Contexts;
-std::vector<PreimageContextPtr> g_Queue;
-std::vector<std::thread> g_Threads;
-std::mutex g_Lock;
-std::atomic<bool> g_Stop;
-
+#if 0
 void
 ClearBacklog(void)
 {
@@ -83,50 +78,9 @@ Worker(void)
 		}
 	}
 }
-
-void
-AddWord(std::string Word)
-{
-	size_t length = Word.size();
-	
-	if (Word.size() == 0)
-		return;
-
-	// std::cout << Word << std::endl;
-	
-	std::lock_guard<std::mutex> l(g_Lock);
-	
-	g_CurrentIndex++;
-	
-	if (g_Contexts.find(length) == g_Contexts.end())
-	{
-		g_Contexts[length] = std::make_unique<PreimageContext>(length, g_Target);
-		g_Contexts[length]->Initialize(length, g_Target);
-	}
-	
-	g_Contexts[length]->AddEntry(Word, g_CurrentIndex);
-	if (g_Contexts[length]->IsFull())
-	{
-		g_Queue.push_back(std::move(g_Contexts[length]));
-		// std::cout << "Queue length " << g_Queue.size() << std::endl;
-		g_Contexts.erase(length);
-	}
-	
-	//
-	// Check if we have any partial contexts that we
-	// should process because we haven't seen any objects
-	// of that length for a while
-	//
-	if ((g_CurrentIndex & (1024-1)) == 0)
-	{
-		ClearBacklog();
-	}
-}
+#endif
 
 int main(int argc, const char * argv[]) {
-	std::string targetHex;
-	WordGenerator wg;
-
 
 	if (argc < 2)
 	{
@@ -134,8 +88,31 @@ int main(int argc, const char * argv[]) {
 		return 0;
 	}
 	
-	g_Target = Util::ParseHex(argv[1]);
+	auto target = Util::ParseHex(argv[1]);
+	auto cracker = new SimdCrack(target);
 	
+	//
+	// Create the main dispatcher
+	//
+	auto mainDispatcher = dispatch::CreateAndEnterDispatcher(
+		"main",
+		dispatch::bind(
+			&SimdCrack::InitAndRun,
+			cracker
+		)
+	);
+
+	//
+	// Read word and add
+	//
+	/*for(int i = 0; i < 30; i++)
+	{
+		std::cout << WordGenerator::Generate(i, "abcdefgABCDEFG") << std::endl;
+	}*/
+
+
+#if 0
+
 	//
 	// Start worker threads
 	//
@@ -162,6 +139,6 @@ int main(int argc, const char * argv[]) {
 	g_Stop = true;
 	for (auto& t : g_Threads)
 		t.join();
-	
+#endif
 	return 0;
 }

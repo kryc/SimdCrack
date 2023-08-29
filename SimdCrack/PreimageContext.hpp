@@ -13,7 +13,10 @@
 #include <cstdint>
 #include <string>
 #include <memory>
+#include <functional>
 #include <simdhash.h>
+
+using ResultHandler = std::function<void(std::string)>;
 
 class PreimageContext{
 public:
@@ -28,7 +31,9 @@ public:
 	size_t GetEntryCount(void);
 	bool   IsFull(void);
 	bool   Check(void);
+	void   CheckAndHandle(ResultHandler Callback);
 	std::string GetMatch(void);
+	const bool Matched(void) { return m_Matched; };
 	size_t GetLength(void) { return mLength; };
 	size_t GetLastIndex(void) { return mLastIndex; };
 private:
@@ -36,10 +41,11 @@ private:
 	// SimdSha2SecondPreimageContext mSha2PreimageContext;
 	size_t mLength = 0;
 	std::vector<uint8_t> mTarget;
-	uint8_t* mBuffer = nullptr;
+	std::vector<uint8_t> mBuffer;
 	uint8_t* mBufferPointers[SIMD_COUNT] = {nullptr};
 	size_t   mNextEntry = 0;
 	std::string mMatch;
+	bool m_Matched;
 	size_t   mLastIndex = 0;
 };
 

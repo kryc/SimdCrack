@@ -13,19 +13,20 @@
 #include <string>
 #include <vector>
 
+static const std::string ALPHANUMERIC = std::string("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+static const std::string LOWER = std::string("abcdefghijklmnopqrstuvwxyz");
+
 class WordGenerator
 {
 public:
-    const std::string ALPHANUMERIC = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
-    WordGenerator(void) : m_Charset(ALPHANUMERIC) { Initialise(); };
-    WordGenerator(std::string Charset) : m_Charset(Charset) { Initialise(); };
-    void Initialise(void);
+    WordGenerator(void) : m_Charset(ALPHANUMERIC) {};
+    WordGenerator(const std::string& Charset) : m_Charset(Charset) {};
     std::string Next(void);
+    static std::string Generate(const size_t Value, const std::string& Charset, const bool Reverse = true);
 private:
-    std::string m_Charset;
-    std::vector<uint16_t> m_Counters;
-    std::string m_Word;
+    const std::string m_Charset;
+    size_t m_Counter = 0;
+    size_t m_Step = 1;
 };
 
 #endif /* WordGenerator_hpp */

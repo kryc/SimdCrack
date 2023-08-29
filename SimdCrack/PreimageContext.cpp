@@ -29,7 +29,7 @@ PreimageContext::Initialize(
 	mTarget = Target;
 	mLength = Length;
 	
-	if (mBuffer != nullptr)
+	/*if (mBuffer != nullptr)
 	{
 		free(mBuffer);
 	}
@@ -38,7 +38,9 @@ PreimageContext::Initialize(
 	if (mBuffer == nullptr)
 	{
 		// We should handle this...
-	}
+	}*/
+
+	mBuffer.reserve(mLength * SIMD_COUNT);
 	
 	for (size_t i = 0; i < SIMD_COUNT; i++)
 	{
@@ -49,11 +51,11 @@ PreimageContext::Initialize(
 PreimageContext::~PreimageContext(
 	void)
 {
-	if (mBuffer != nullptr)
-	{
-		free(mBuffer);
-		mBuffer = nullptr;
-	}
+	// if (mBuffer != nullptr)
+	// {
+	// 	free(mBuffer);
+	// 	mBuffer = nullptr;
+	// }
 }
 
 void
@@ -116,10 +118,13 @@ PreimageContext::Check(void)
 		if (memcmp(&hashes[index * SHA256_SIZE], &mTarget[0], SHA256_SIZE) == 0)
 		{
 			mMatch = std::string((char*)mBufferPointers[index], mLength);
+			m_Matched = true;
 			return true;
 		}
 	}
-	return false;
+
+	m_Matched = false;
+	return m_Matched;
 #else
 	ALIGN(32) SimdSha2SecondPreimageContext sha2PreimageContext;
 	
@@ -136,6 +141,17 @@ PreimageContext::Check(void)
 #endif
 }
 
+void
+PreimageContext::CheckAndHandle(
+	ResultHandler Callback
+)
+{
+	if (Check())
+	{
+		Callback(mMatch);
+	}
+}
+
 std::string
 PreimageContext::GetMatch(void)
 {
@@ -145,7 +161,7 @@ PreimageContext::GetMatch(void)
 void
 PreimageContext::Reset(void)
 {
-	memset(mBuffer, 0x00, mLength * SIMD_COUNT);
+	memset(&mBuffer[0], 0x00, mLength * SIMD_COUNT);
 	mNextEntry = 0;
 	mMatch.resize(0);
 	
