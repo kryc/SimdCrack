@@ -19,7 +19,6 @@ WordGenerator::Generate(
 {
     std::string out;
     int64_t i;
-    // int64_t d, r;
     
     i = (int64_t)Value;
     

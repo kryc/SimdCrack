@@ -23,32 +23,31 @@ public:
 	PreimageContext(void) = default;
 	PreimageContext(const size_t Length, std::vector<uint8_t>& Target);
 	~PreimageContext(void);
-	void   Initialize(const size_t Length, std::vector<uint8_t>& Target);
-	void   Reset(void);
-	void   AddEntry(std::string& Value);
-	void   AddEntry(std::string& Value, const size_t Index);
-	std::string GetEntry(const size_t Index);
-	size_t GetEntryCount(void);
-	bool   IsFull(void);
-	bool   Check(void);
-	void   CheckAndHandle(ResultHandler Callback);
-	std::string GetMatch(void);
-	const bool Matched(void) { return m_Matched; };
-	size_t GetLength(void) { return mLength; };
-	size_t GetLastIndex(void) { return mLastIndex; };
+	void   	Initialize(const size_t Length, std::vector<uint8_t>& Target);
+	const bool	Initialized(void) const { return m_Length != (size_t)-1; };
+	void   	Reset(void);
+	void   	AddEntry(std::string& Value);
+	void   	AddEntry(std::string& Value, const size_t Index);
+	const std::string GetEntry(const size_t Index) const;
+	const size_t 	GetEntryCount(void) const;
+	const bool IsFull(void) const { return m_NextEntry == SIMD_COUNT; };
+	const bool IsEmpty(void) const { return m_NextEntry == 0; };
+	const size_t Remaining(void) const { return SIMD_COUNT - m_NextEntry; };
+	bool   	Check(void);
+	void   	CheckAndHandle(ResultHandler Callback);
+	const std::string GetMatch(void) const { return m_Match; };
+	const bool 		Matched(void) const { return m_Matched; };
+	const size_t 	GetLength(void) const { return m_Length; };
+	size_t 	GetLastIndex(void) { return m_LastIndex; };
 private:
-	// ALIGN(32) SimdShaContext mSha2Context;
-	// SimdSha2SecondPreimageContext mSha2PreimageContext;
-	size_t mLength = 0;
-	std::vector<uint8_t> mTarget;
-	std::vector<uint8_t> mBuffer;
-	uint8_t* mBufferPointers[SIMD_COUNT] = {nullptr};
-	size_t   mNextEntry = 0;
-	std::string mMatch;
-	bool m_Matched;
-	size_t   mLastIndex = 0;
+	size_t 		m_Length = (size_t)-1;
+	std::vector<uint8_t> m_Target;
+	std::vector<uint8_t> m_Buffer;
+	uint8_t* 	m_BufferPointers[SIMD_COUNT] = {nullptr};
+	size_t   	m_NextEntry = 0;
+	std::string m_Match;
+	bool 	 	m_Matched;
+	size_t   	m_LastIndex = 0;
 };
-
-using PreimageContextPtr = std::unique_ptr<PreimageContext>;
 
 #endif /* PreimageContext_hpp */

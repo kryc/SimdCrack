@@ -29,8 +29,8 @@ public:
         : m_Target(Target) {};
     void InitAndRun(void);
 private:
-    void ProcessContext(dispatch::BoundRefPtr<PreimageContext>);
-    void GenerateBlock2(const size_t Start, const size_t Count, const size_t Step);
+    void ProcessContext(PreimageContext*);
+    void GenerateBlock(const size_t Start, const size_t Count, const size_t Step);
     void BlockProcessed(std::string Result);
     void FoundResult(std::string Result);
 

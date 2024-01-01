@@ -5,7 +5,7 @@
 //  Created by Kryc on 14/09/2020.
 //  Copyright © 2020 Kryc. All rights reserved.
 //
-
+#include <assert.h>
 #include <stdlib.h>
 #include <iostream>
 #include <vector>
@@ -26,79 +26,77 @@ PreimageContext::Initialize(
 	const size_t Length,
 	std::vector<uint8_t>& Target)
 {
-	mTarget = Target;
-	mLength = Length;
-	
-	/*if (mBuffer != nullptr)
-	{
-		free(mBuffer);
-	}
-	
-	mBuffer = (uint8_t*) calloc(mLength * SIMD_COUNT, sizeof(uint8_t));
-	if (mBuffer == nullptr)
-	{
-		// We should handle this...
-	}*/
+	size_t previousLength;
 
-	mBuffer.reserve(mLength * SIMD_COUNT);
-	
-	for (size_t i = 0; i < SIMD_COUNT; i++)
+	previousLength = m_Length;
+
+	m_Target = Target;
+	m_NextEntry = 0;
+	m_LastIndex = 0;
+
+	if (previousLength != Length)
 	{
-		mBufferPointers[i] = &mBuffer[mLength * i];
+		m_Length = Length;
+		m_Buffer.reserve(m_Length * SIMD_COUNT);
+		
+		for (size_t i = 0; i < SIMD_COUNT; i++)
+		{
+			m_BufferPointers[i] = &m_Buffer[m_Length * i];
+		}
 	}
 }
 
 PreimageContext::~PreimageContext(
-	void)
+	void
+)
 {
-	// if (mBuffer != nullptr)
+	// if (m_Buffer != nullptr)
 	// {
-	// 	free(mBuffer);
-	// 	mBuffer = nullptr;
+	// 	free(m_Buffer);
+	// 	m_Buffer = nullptr;
 	// }
 }
 
 void
-PreimageContext::AddEntry(std::string& Value)
+PreimageContext::AddEntry(
+	std::string& Value
+)
 {
+	assert(!IsFull());
 	if (IsFull())
 		return;
 	
-	if (Value.size() != mLength)
+	if (Value.size() != m_Length)
 	{
 		std::cerr << "[!] Invalid length passed to AddEntry" << std::endl;
 		return;
 	}
 	
-	char* nextEntry = (char*)mBufferPointers[mNextEntry++];
-	memcpy(nextEntry, &Value[0], mLength);
+	char* nextEntry = (char*)m_BufferPointers[m_NextEntry++];
+	memcpy(nextEntry, &Value[0], m_Length);
 }
 
 void
 PreimageContext::AddEntry(std::string& Value, const size_t Index)
 {
-	mLastIndex = Index;
+	m_LastIndex = Index;
 	AddEntry(Value);
 }
 
-std::string
+const std::string
 PreimageContext::GetEntry(
 	const size_t Index
-)
+) const
 {
-	return std::string((char*)mBufferPointers[Index], mLength);
+	return std::string((char*)m_BufferPointers[Index], m_Length);
 }
 
-size_t
-PreimageContext::GetEntryCount(void)
+const size_t
+PreimageContext::GetEntryCount(
+	void
+) const
 {
-	return mNextEntry;
-}
-
-bool
-PreimageContext::IsFull(void)
-{
-	return mNextEntry == SIMD_COUNT;
+	return m_NextEntry;
 }
 
 bool
@@ -109,15 +107,15 @@ PreimageContext::Check(void)
 #ifndef USE_SECONDPREIMAGE
 	uint8_t hashes[SHA256_SIZE * SIMD_COUNT];
 
-	SimdSha256Update(&sha2Context, mLength, (const uint8_t**)mBufferPointers);
+	SimdSha256Update(&sha2Context, m_Length, (const uint8_t**)m_BufferPointers);
 	SimdSha256Finalize(&sha2Context);
 	SimdSha256GetHashesUnrolled(&sha2Context, (uint8_t*)hashes);
 
 	for (size_t index = 0; index < GetEntryCount(); index++)
 	{
-		if (memcmp(&hashes[index * SHA256_SIZE], &mTarget[0], SHA256_SIZE) == 0)
+		if (memcmp(&hashes[index * SHA256_SIZE], &m_Target[0], SHA256_SIZE) == 0)
 		{
-			mMatch = std::string((char*)mBufferPointers[index], mLength);
+			m_Match = std::string((char*)m_BufferPointers[index], m_Length);
 			m_Matched = true;
 			return true;
 		}
@@ -128,13 +126,13 @@ PreimageContext::Check(void)
 #else
 	ALIGN(32) SimdSha2SecondPreimageContext sha2PreimageContext;
 	
-	SimdSha256SecondPreimageInit(&sha2PreimageContext, &sha2Context, mTarget.data());
+	SimdSha256SecondPreimageInit(&sha2PreimageContext, &sha2Context, m_Target.data());
 
 
-	size_t result = SimdSha256SecondPreimage(&sha2PreimageContext, (const size_t)mLength, (const uint8_t**)mBufferPointers);
+	size_t result = SimdSha256SecondPreimage(&sha2PreimageContext, (const size_t)m_Length, (const uint8_t**)m_BufferPointers);
 	if (result != (size_t)-1)
 	{
-		mMatch = std::string((char*)mBufferPointers[result], mLength);
+		m_Match = std::string((char*)m_BufferPointers[result], m_Length);
 		return true;
 	}
 	return false;
@@ -148,24 +146,18 @@ PreimageContext::CheckAndHandle(
 {
 	if (Check())
 	{
-		Callback(mMatch);
+		Callback(m_Match);
 	}
-}
-
-std::string
-PreimageContext::GetMatch(void)
-{
-	return mMatch;
 }
 
 void
 PreimageContext::Reset(void)
 {
-	memset(&mBuffer[0], 0x00, mLength * SIMD_COUNT);
-	mNextEntry = 0;
-	mMatch.resize(0);
+	memset(&m_Buffer[0], 0x00, m_Length * SIMD_COUNT);
+	m_NextEntry = 0;
+	m_Match.resize(0);
 	
 	// SimdShaContext sha2Context;
 	// SimdSha256Init(&mSha2Context, SIMD_COUNT);
-	// SimdSha256SecondPreimageInit(&mSha2PreimageContext, &sha2Context, mTarget.data());
+	// SimdSha256SecondPreimageInit(&mSha2PreimageContext, &sha2Context, m_Target.data());
 }
