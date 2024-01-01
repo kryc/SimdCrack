@@ -27,6 +27,8 @@ class SimdCrack
 public:
     SimdCrack(std::vector<uint8_t> Target)
         : m_Target(Target) {};
+    SimdCrack(std::vector<uint8_t> Target, WordGenerator Generator)
+        : m_Target(Target),m_Generator(Generator) {};
     void InitAndRun(void);
 private:
     void ProcessContext(PreimageContext*);

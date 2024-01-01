@@ -13,20 +13,29 @@
 #include <string>
 #include <vector>
 
-static const std::string ALPHANUMERIC = std::string("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-static const std::string LOWER = std::string("abcdefghijklmnopqrstuvwxyz");
+static const std::string LOWER = "abcdefghijklmnopqrstuvwxyz";
+static const std::string UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static const std::string ALPHA = LOWER + UPPER;
+static const std::string NUMERIC = "0123456789";
+static const std::string ASCII_SPECIAL = " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+static const std::string ALPHANUMERIC = LOWER + UPPER + NUMERIC;
+static const std::string ASCII = LOWER + UPPER + NUMERIC + ASCII_SPECIAL;
 
 class WordGenerator
 {
 public:
     WordGenerator(void) : m_Charset(ALPHANUMERIC) {};
     WordGenerator(const std::string& Charset) : m_Charset(Charset) {};
-    std::string Next(void);
-    static std::string Generate(const size_t Value, const std::string& Charset, const bool Reverse = true);
+    WordGenerator(const std::string& Charset, std::string Prefix, std::string Postfix)
+        : m_Charset(Charset),m_Prefix(Prefix),m_Postfix(Postfix) {};
+    static std::string GenerateWord(const size_t Value, const std::string& Charset, const bool Reverse = true);
+    const std::string Generate(const size_t Value, const bool Reverse = true);
+    void SetPrefix(std::string& Prefix) { m_Prefix = Prefix; };
+    void SetPostfix(std::string& Postfix) { m_Postfix = Postfix; };
 private:
     const std::string m_Charset;
-    size_t m_Counter = 0;
-    size_t m_Step = 1;
+    std::string m_Prefix;
+    std::string m_Postfix;
 };
 
 #endif /* WordGenerator_hpp */

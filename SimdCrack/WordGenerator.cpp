@@ -11,7 +11,7 @@
 // Static
 //
 std::string
-WordGenerator::Generate(
+WordGenerator::GenerateWord(
     const size_t Value,
     const std::string& Charset,
     const bool Reverse
@@ -37,12 +37,11 @@ WordGenerator::Generate(
     return out;
 }
 
-std::string
-WordGenerator::Next(
-    void
+const std::string
+WordGenerator::Generate(
+    const size_t Value,
+    const bool Reverse
 )
 {
-    std::string next = Generate(m_Counter, m_Charset);
-    m_Counter += m_Step;
-    return next;
+    return m_Prefix + GenerateWord(Value, m_Charset, Reverse) + m_Postfix;
 }

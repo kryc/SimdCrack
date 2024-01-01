@@ -100,7 +100,7 @@ SimdCrack::GenerateBlock(
     // Generate the first word to get the size so
     // we can initialize the context
     //
-    word = WordGenerator::Generate(index, ALPHANUMERIC, false);
+    word = m_Generator.Generate(index);
     ctx.Initialize(word.length(), m_Target);
     ctx.AddEntry(word);
 
@@ -116,7 +116,7 @@ SimdCrack::GenerateBlock(
             ctx.Initialize(word.length(), m_Target);
         }
 
-        word = WordGenerator::Generate(index, ALPHANUMERIC, false);
+        word = m_Generator.Generate(index);
 
         if (ctx.GetLength() == word.length())
         {
