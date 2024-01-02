@@ -16,7 +16,7 @@
 
 PreimageContext::PreimageContext(
 	const size_t Length,
-	std::vector<uint8_t>& Target)
+	std::vector<std::vector<uint8_t>>& Target)
 {
 	Initialize(Length, Target);
 }
@@ -24,7 +24,7 @@ PreimageContext::PreimageContext(
 void
 PreimageContext::Initialize(
 	const size_t Length,
-	std::vector<uint8_t>& Target)
+	std::vector<std::vector<uint8_t>>& Target)
 {
 	size_t previousLength;
 
@@ -99,8 +99,10 @@ PreimageContext::GetEntryCount(
 	return m_NextEntry;
 }
 
-bool
-PreimageContext::Check(void)
+void
+PreimageContext::CheckAndHandle(
+	ResultHandler Callback
+)
 {
 	ALIGN(32) SimdShaContext sha2Context;
 	SimdSha256Init(&sha2Context, SIMD_COUNT);
@@ -113,16 +115,17 @@ PreimageContext::Check(void)
 
 	for (size_t index = 0; index < GetEntryCount(); index++)
 	{
-		if (memcmp(&hashes[index * SHA256_SIZE], &m_Target[0], SHA256_SIZE) == 0)
+		for (size_t target = 0; target < m_Target.size(); target++)
 		{
-			m_Match = std::string((char*)m_BufferPointers[index], m_Length);
-			m_Matched = true;
-			return true;
+			if (memcmp(&hashes[index * SHA256_SIZE], &m_Target[target][0], SHA256_SIZE) == 0)
+			{
+				std::vector<uint8_t> hash = m_Target[target];
+				m_Match = std::string((char*)m_BufferPointers[index], m_Length);
+				Callback(std::move(hash), m_Match);
+				m_Matched++;
+			}
 		}
 	}
-
-	m_Matched = false;
-	return m_Matched;
 #else
 	ALIGN(32) SimdSha2SecondPreimageContext sha2PreimageContext;
 	
@@ -137,17 +140,6 @@ PreimageContext::Check(void)
 	}
 	return false;
 #endif
-}
-
-void
-PreimageContext::CheckAndHandle(
-	ResultHandler Callback
-)
-{
-	if (Check())
-	{
-		Callback(m_Match);
-	}
 }
 
 void

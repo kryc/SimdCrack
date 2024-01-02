@@ -30,6 +30,7 @@ int main(
 	std::string prefix;
 	std::string postfix;
 	std::vector<uint8_t> target;
+	std::vector<std::vector<uint8_t>> targets;
 	std::string charset;
 	std::string extra;
 	size_t blocksize = 0;
@@ -54,7 +55,7 @@ int main(
 				std::cerr << "No value specified for " << arg << std::endl;
 				return 1;
 			}
-			std::stringstream ss(argv[i + 1]);
+			std::stringstream ss(argv[++i]);
 			ss >> blocksize;
 		}
 		else if (arg == "--prefix" || arg == "-f")
@@ -64,7 +65,7 @@ int main(
 				std::cerr << "No value specified for " << arg << std::endl;
 				return 1;
 			}
-			prefix = argv[i + 1];
+			prefix = argv[++i];
 		}
 		else if (arg == "--postfix" || arg == "-a")
 		{
@@ -73,7 +74,7 @@ int main(
 				std::cerr << "No value specified for " << arg << std::endl;
 				return 1;
 			}
-			postfix = argv[i + 1];
+			postfix = argv[++i];
 		}
 		else if (arg == "--charset" || arg == "-c")
 		{
@@ -83,7 +84,7 @@ int main(
 				return 1;
 			}
 
-			std::string charset_str = argv[i + 1];
+			std::string charset_str = argv[++i];
 			if (charset_str == "alphanumeric" || charset_str == "alnum")
 			{
 				charset = ALPHANUMERIC;
@@ -117,12 +118,13 @@ int main(
 				return 1;
 			}
 
-			extra = argv[i + 1];
+			extra = argv[++i];
 		}
 		else
 		{
 			assert(arg[0] != '-');
 			target = Util::ParseHex(arg);
+			targets.push_back(target);
 		}
 	}
 
@@ -134,7 +136,7 @@ int main(
 	std::cout << "Using character set: " << charset << std::endl;
 	
 	auto generator = WordGenerator(charset, prefix, postfix);
-	auto cracker = new SimdCrack(target, std::move(generator));
+	auto cracker = new SimdCrack(std::move(targets), std::move(generator));
 	if (blocksize != 0)
 	{
 		cracker->SetBlocksize(blocksize);

@@ -16,14 +16,14 @@
 #include <functional>
 #include <simdhash.h>
 
-using ResultHandler = std::function<void(std::string)>;
+using ResultHandler = std::function<void(const std::vector<uint8_t>, const std::string)>;
 
 class PreimageContext{
 public:
 	PreimageContext(void) = default;
-	PreimageContext(const size_t Length, std::vector<uint8_t>& Target);
+	PreimageContext(const size_t Length, std::vector<std::vector<uint8_t>>& Target);
 	~PreimageContext(void);
-	void   	Initialize(const size_t Length, std::vector<uint8_t>& Target);
+	void   	Initialize(const size_t Length, std::vector<std::vector<uint8_t>>& Target);
 	const bool	Initialized(void) const { return m_Length != (size_t)-1; };
 	void   	Reset(void);
 	void   	AddEntry(std::string& Value);
@@ -41,12 +41,12 @@ public:
 	size_t 	GetLastIndex(void) { return m_LastIndex; };
 private:
 	size_t 		m_Length = (size_t)-1;
-	std::vector<uint8_t> m_Target;
+	std::vector<std::vector<uint8_t>> m_Target;
 	std::vector<uint8_t> m_Buffer;
 	uint8_t* 	m_BufferPointers[SIMD_COUNT] = {nullptr};
 	size_t   	m_NextEntry = 0;
 	std::string m_Match;
-	bool 	 	m_Matched;
+	size_t 	 	m_Matched = 0;
 	size_t   	m_LastIndex = 0;
 };
 

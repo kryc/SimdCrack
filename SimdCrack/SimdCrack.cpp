@@ -30,7 +30,8 @@ SimdCrack::InitAndRun(
 
 void
 SimdCrack::FoundResult(
-    std::string Result
+    const std::vector<uint8_t> Hash,
+    const std::string Result
 )
 {
     assert(dispatch::CurrentDispatcher() == dispatch::GetDispatcher("main").get());
@@ -38,24 +39,36 @@ SimdCrack::FoundResult(
     //
     // Output it
     //
-    std::cout << Result << std::endl;
-    m_Found = true;
+    for (size_t i = 0; i < Hash.size(); i++)
+    {
+        printf("%02x", Hash[i]);
+    }
+    std::cout << ": " << Result << std::endl;
+    m_Found++;
 
     //
-    // Stop the pool
+    // Check if we have found all
+    // targets
     //
-    m_DispatchPool->Stop();
-    m_DispatchPool->Wait();
+    if (m_Found == m_Target.size())
+    {
+        //
+        // Stop the pool
+        //
+        m_DispatchPool->Stop();
+        m_DispatchPool->Wait();
 
-    //
-    // Stop the current (main) dispatcher
-    //
-    dispatch::CurrentDispatcher()->Stop();
+        //
+        // Stop the current (main) dispatcher
+        //
+        dispatch::CurrentDispatcher()->Stop();
+    }
 }
 
 void
 SimdCrack::BlockProcessed(
-    std::string Result
+    const std::vector<uint8_t> Hash,
+    const std::string Result
 )
 {
     dispatch::PostTaskToDispatcher(
@@ -63,6 +76,7 @@ SimdCrack::BlockProcessed(
         dispatch::bind(
             &SimdCrack::FoundResult,
             this,
+            std::move(Hash),
             Result
         )
     );
@@ -77,7 +91,8 @@ SimdCrack::ProcessContext(
         dispatch::bindf<ResultHandler>(
             &SimdCrack::BlockProcessed,
             this,
-            std::placeholders::_1
+            std::placeholders::_1,
+            std::placeholders::_2
         )
     );
 }

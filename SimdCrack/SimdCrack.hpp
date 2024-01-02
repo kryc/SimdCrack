@@ -11,7 +11,6 @@
 #include <cstdint>
 #include <iostream>
 #include <thread>
-#include <mutex>
 #include <atomic>
 #include "PreimageContext.hpp"
 #include "Util.hpp"
@@ -25,9 +24,9 @@
 class SimdCrack
 {
 public:
-    SimdCrack(std::vector<uint8_t> Target)
+    SimdCrack(std::vector<std::vector<uint8_t>> Target)
         : m_Target(Target) {};
-    SimdCrack(std::vector<uint8_t> Target, WordGenerator Generator)
+    SimdCrack(std::vector<std::vector<uint8_t>> Target, WordGenerator Generator)
         : m_Target(Target),m_Generator(Generator) {};
     void InitAndRun(void);
     void SetBlocksize(const size_t BlockSize) { m_Blocksize = BlockSize; };
@@ -35,15 +34,14 @@ private:
     void ProcessContext(PreimageContext*);
     void GenerateBlock(PreimageContext* Context, const size_t Start, const size_t Step, size_t* Next);
     void GenerateBlocks(const size_t Start, const size_t Step);
-    void BlockProcessed(std::string Result);
-    void FoundResult(std::string Result);
+    void BlockProcessed(const std::vector<uint8_t> Hash, const std::string Result);
+    void FoundResult(const std::vector<uint8_t> Hash, const std::string Result);
 
     dispatch::DispatcherPoolPtr m_DispatchPool;
-    std::vector<uint8_t> m_Target;
+    std::vector<std::vector<uint8_t>> m_Target;
     std::map<size_t, PreimageContext> m_Contexts;
     WordGenerator m_Generator;
-    bool m_Found = false;
-    std::mutex m_WordLock;
+    size_t m_Found = 0;
     size_t m_Threads = 0;
     size_t m_Blocksize = 10000;
 };
