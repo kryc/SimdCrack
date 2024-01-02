@@ -19,10 +19,9 @@ SimdCrack::InitAndRun(
     {
         m_DispatchPool->PostTask(
             dispatch::bind(
-                &SimdCrack::GenerateBlock,
+                &SimdCrack::GenerateBlocks,
                 this,
                 i + 1,
-                1000,
                 m_Threads
             )
         );
@@ -85,8 +84,36 @@ SimdCrack::ProcessContext(
 
 void
 SimdCrack::GenerateBlock(
+    PreimageContext* Context,
     const size_t Start,
-    const size_t Count,
+    const size_t Step,
+    size_t* Next
+)
+{
+    size_t index = Start;
+    size_t wordSize = 0;
+    std::string word;
+
+    word = m_Generator.Generate(index);
+    index += Step;
+    wordSize = word.size();
+    Context->Initialize(wordSize, m_Target);
+
+
+    // for (size_t i = 0; i < SIMD_COUNT; i++, index += Step)
+    do
+    {
+        Context->AddEntry(word);
+        word = m_Generator.Generate(index);
+        index += Step;
+    } while (!Context->IsFull() && word.size() == wordSize);
+
+    *Next = index;
+}
+
+void
+SimdCrack::GenerateBlocks(
+    const size_t Start,
     const size_t Step
 )
 {
@@ -97,57 +124,32 @@ SimdCrack::GenerateBlock(
     index = Start;
 
     //
-    // Generate the first word to get the size so
-    // we can initialize the context
+    // Generate _count_ blocks (contexts)
+    // and hash and check them
     //
-    word = m_Generator.Generate(index);
-    ctx.Initialize(word.length(), m_Target);
-    ctx.AddEntry(word);
-
     for (
         size_t counter = 0;
-        counter < Count;
-        index += Step, counter++
+        counter < m_Blocksize;
+        counter++
     )
     {
-        if (ctx.IsFull())
-        {
-            ProcessContext(&ctx);
-            ctx.Initialize(word.length(), m_Target);
-        }
+        GenerateBlock(
+            &ctx,
+            index,
+            Step,
+            &index
+        );
 
-        word = m_Generator.Generate(index);
-
-        if (ctx.GetLength() == word.length())
-        {
-            ctx.AddEntry(word);
-        }
-        else
-        {
-            if (!ctx.IsEmpty())
-            {
-                ProcessContext(&ctx);
-            }
-            ctx.Initialize(word.length(), m_Target);
-            ctx.AddEntry(word);
-        }
-    }
-
-    //
-    // If there is a partial context
-    // process it now before the next round
-    //
-    if (!ctx.IsEmpty())
-    {
-        ProcessContext(&ctx);
+        ProcessContext(
+            &ctx
+        );
     }
 
     dispatch::PostTaskFast(
         dispatch::bind(
-            &SimdCrack::GenerateBlock,
+            &SimdCrack::GenerateBlocks,
             this,
             index,
-            Count,
             Step
         )
     );

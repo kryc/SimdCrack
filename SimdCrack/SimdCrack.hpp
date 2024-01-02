@@ -30,9 +30,11 @@ public:
     SimdCrack(std::vector<uint8_t> Target, WordGenerator Generator)
         : m_Target(Target),m_Generator(Generator) {};
     void InitAndRun(void);
+    void SetBlocksize(const size_t BlockSize) { m_Blocksize = BlockSize; };
 private:
     void ProcessContext(PreimageContext*);
-    void GenerateBlock(const size_t Start, const size_t Count, const size_t Step);
+    void GenerateBlock(PreimageContext* Context, const size_t Start, const size_t Step, size_t* Next);
+    void GenerateBlocks(const size_t Start, const size_t Step);
     void BlockProcessed(std::string Result);
     void FoundResult(std::string Result);
 
@@ -43,6 +45,7 @@ private:
     bool m_Found = false;
     std::mutex m_WordLock;
     size_t m_Threads = 0;
+    size_t m_Blocksize = 10000;
 };
 
 #endif // SimdCrack_hpp

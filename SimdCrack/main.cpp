@@ -13,6 +13,8 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <string>
+#include <sstream>
 #include <assert.h>
 #include "PreimageContext.hpp"
 #include "Util.hpp"
@@ -30,6 +32,7 @@ int main(
 	std::vector<uint8_t> target;
 	std::string charset;
 	std::string extra;
+	size_t blocksize = 0;
 
 	std::cout << "SIMDCrack Hash Cracker" << std::endl;
 
@@ -44,7 +47,17 @@ int main(
 	for (int i = 1; i < argc; i++)
 	{
 		std::string arg = argv[i];
-		if (arg == "--prefix" || arg == "-f")
+		if (arg == "--blocksize" || arg == "-b")
+		{
+			if (argc <= i)
+			{
+				std::cerr << "No value specified for " << arg << std::endl;
+				return 1;
+			}
+			std::stringstream ss(argv[i + 1]);
+			ss >> blocksize;
+		}
+		else if (arg == "--prefix" || arg == "-f")
 		{
 			if (argc <= i)
 			{
@@ -122,6 +135,10 @@ int main(
 	
 	auto generator = WordGenerator(charset, prefix, postfix);
 	auto cracker = new SimdCrack(target, std::move(generator));
+	if (blocksize != 0)
+	{
+		cracker->SetBlocksize(blocksize);
+	}
 	
 	//
 	// Create the main dispatcher
