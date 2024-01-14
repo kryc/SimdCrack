@@ -15,6 +15,7 @@
 #include <atomic>
 #include <string>
 #include <sstream>
+#include <filesystem>
 #include <assert.h>
 #include "PreimageContext.hpp"
 #include "Util.hpp"
@@ -33,9 +34,16 @@ int main(
 	std::vector<std::vector<uint8_t>> targets;
 	std::string charset;
 	std::string extra;
-	size_t blocksize = 0;
+	size_t blocksize;
+	Algorithm algo;
+	std::filesystem::path hashlist;
+	size_t threads;
 
-	std::cout << "SIMDCrack Hash Cracker" << std::endl;
+	algo = Algorithm::sha256;
+	threads = 0;
+	blocksize = 0;
+
+	std::cerr << "SIMDCrack Hash Cracker" << std::endl;
 
 	if (argc < 2)
 	{
@@ -57,6 +65,16 @@ int main(
 			}
 			std::stringstream ss(argv[++i]);
 			ss >> blocksize;
+		}
+		else if (arg == "--threads" || arg == "-t")
+		{
+			if (argc <= i)
+			{
+				std::cerr << "No value specified for " << arg << std::endl;
+				return 1;
+			}
+			std::stringstream ss(argv[++i]);
+			ss >> threads;
 		}
 		else if (arg == "--prefix" || arg == "-f")
 		{
@@ -120,6 +138,25 @@ int main(
 
 			extra = argv[++i];
 		}
+		else if (arg == "--sha1" || arg == "-s1")
+		{
+			algo = Algorithm::sha1;
+		}
+		else if (arg == "--list" || arg == "-l")
+		{
+			if (argc == i)
+			{
+				std::cerr << "No value specified for " << arg << std::endl;
+				return 1;
+			}
+
+			hashlist = argv[++i];
+			if (!std::filesystem::exists(hashlist))
+			{
+				std::cerr << "Hash list file not found " << hashlist << std::endl;
+				return 1;
+			}
+		}
 		else
 		{
 			assert(arg[0] != '-');
@@ -133,15 +170,27 @@ int main(
 	//
 	charset += extra;
 
-	std::cout << "Using character set: " << charset << std::endl;
+	std::cerr << "Using character set: " << charset << std::endl;
 	
 	auto generator = WordGenerator(charset, prefix, postfix);
 	auto cracker = new SimdCrack(std::move(targets), std::move(generator));
+	cracker->SetAlgorithm(algo);
+	
+	if (!hashlist.empty())
+	{
+		cracker->SetHashList(hashlist);
+	}
+	
 	if (blocksize != 0)
 	{
 		cracker->SetBlocksize(blocksize);
 	}
-	
+
+	if (threads != 0)
+	{
+		cracker->SetThreads(threads);
+	}
+
 	//
 	// Create the main dispatcher
 	//

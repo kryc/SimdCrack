@@ -1,7 +1,17 @@
+#include <fstream>
 #include <mutex>
+
 #include "SimdCrack.hpp"
 #include "SharedRefptr.hpp"
+#include "Util.hpp"
 #include "WordGenerator.hpp"
+
+SimdCrack::~SimdCrack(
+    void
+)
+{
+    free(m_Targets);
+}
 
 void
 SimdCrack::InitAndRun(
@@ -13,7 +23,23 @@ SimdCrack::InitAndRun(
         m_Threads = std::thread::hardware_concurrency();
     }
 
+    if (m_Algorithm == Algorithm::sha256)
+    {
+        m_HashWidth = SHA256_SIZE;
+    }
+    else if (m_Algorithm == Algorithm::sha1)
+    {
+        m_HashWidth = SHA1_SIZE;
+    }
+
+    if(!ProcessHashList())
+    {
+        return;
+    }
+
     m_DispatchPool = dispatch::CreateDispatchPool("pool", m_Threads);
+
+    std::cerr << "Starting cracking using " << m_Threads << " threads" << std::endl;
 
     for (size_t i = 0; i < m_Threads; i++)
     {
@@ -25,7 +51,100 @@ SimdCrack::InitAndRun(
                 m_Threads
             )
         );
-    }    
+    }
+}
+
+int comparator(
+    const void* x,
+    const void* y,
+    void* Width
+)
+{
+    return memcmp(x, y, (size_t)Width);
+}
+
+inline bool
+SimdCrack::AddHashToList(
+    const uint8_t* Hash
+)
+{
+    if (m_TargetsCount == m_TargetsAllocated)
+    {
+        m_TargetsAllocated += 1024;
+        m_Targets = (uint8_t*)realloc(m_Targets, m_TargetsAllocated * m_HashWidth);
+        if (m_Targets == NULL)
+        {
+            std::cerr << "Not enough memory to allocate hash targets!" << std::endl;
+            return false;
+        }
+    }
+
+    uint8_t* next = m_Targets + (m_TargetsCount * m_HashWidth);
+    memcpy(next, Hash, m_HashWidth);
+    m_TargetsCount++;
+    return true;
+}
+
+bool
+SimdCrack::AddHashToList(
+    const std::string Hash
+)
+{
+    auto nexthash = Util::ParseHex(Hash);
+    return AddHashToList(&nexthash[0]);
+}
+
+bool
+SimdCrack::ProcessHashList(
+    void
+)
+{
+    m_TargetsAllocated = 1024;
+    m_TargetsCount = 0;
+    m_Targets = (uint8_t*)malloc(1024 * m_HashWidth);
+
+    if (!m_HashList.empty())
+    {
+        std::cerr << "Processing hash list" << std::endl;
+
+        std::ifstream infile(m_HashList);
+        std::string line;
+        while (std::getline(infile, line))
+        {
+            if (line.size() != m_HashWidth * 2)
+            {
+                std::cerr << "Invalid hash found, ignoring: " << line << std::endl;
+                continue;
+            }
+
+            if(!AddHashToList(std::move(line)))
+            {
+                return false;
+            }
+        }
+    }
+    else
+    {
+        for (auto& target : m_Target)
+        {
+            if (!AddHashToList(&target[0]))
+            {
+                return false;
+            }
+        }
+    }
+
+    qsort_r(m_Targets, m_TargetsCount, m_HashWidth, comparator, (void*)m_HashWidth);
+
+    return true;
+}
+
+void
+SimdCrack::SetAlgorithm(
+    const Algorithm Algo
+)
+{
+    m_Algorithm = Algo;
 }
 
 void
@@ -50,7 +169,7 @@ SimdCrack::FoundResult(
     // Check if we have found all
     // targets
     //
-    if (m_Found == m_Target.size())
+    if (m_Found == m_TargetsCount)
     {
         //
         // Stop the pool
@@ -110,17 +229,14 @@ SimdCrack::GenerateBlock(
     std::string word;
 
     word = m_Generator.Generate(index);
-    index += Step;
     wordSize = word.size();
-    Context->Initialize(wordSize, m_Target);
+    Context->Initialize(wordSize);
 
-
-    // for (size_t i = 0; i < SIMD_COUNT; i++, index += Step)
     do
     {
+        index += Step;
         Context->AddEntry(word);
         word = m_Generator.Generate(index);
-        index += Step;
     } while (!Context->IsFull() && word.size() == wordSize);
 
     *Next = index;
@@ -133,7 +249,7 @@ SimdCrack::GenerateBlocks(
 )
 {
     std::string word;
-    PreimageContext ctx;
+    PreimageContext ctx(m_Algorithm, m_Targets, m_TargetsCount);
     size_t index;
 
     index = Start;
