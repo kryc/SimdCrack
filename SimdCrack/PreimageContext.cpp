@@ -115,6 +115,32 @@ PreimageContext::GetEntryCount(
 	return m_NextEntry;
 }
 
+const uint8_t*
+binary_search(
+	const uint8_t* arr,
+	const uint8_t* x,
+	const size_t len,
+	const size_t Width
+)
+{
+	size_t low = 0;
+    size_t high = len - 1;
+    while (low <= high) {
+        size_t mid = (low + high) / 2;
+		if (mid > len)
+			break;
+        int cmp = memcmp(arr + mid * Width, x, Width);
+        if (cmp == 0) {
+            return arr + mid * Width;
+        } else if (cmp < 0) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+    return nullptr;
+}
+
 void
 PreimageContext::CheckAndHandle(
 	ResultHandler Callback
@@ -138,18 +164,24 @@ PreimageContext::CheckAndHandle(
 		SimdSha1GetHashesUnrolled(&shaContext, (uint8_t*)hashes);
 	}
 
+	// ssize_t found;
 	for (size_t index = 0; index < GetEntryCount(); index++)
 	{
-		for (size_t target = 0; target < m_TargetsCount; target++)
+		// Binary search
+		auto found = binary_search(
+			m_Targets,
+			&hashes[index * m_HashWidth],
+			m_TargetsCount,
+			m_HashWidth
+		);
+
+		if (found != nullptr)
 		{
-			const uint8_t* nextTarget = &m_Targets[target * m_HashWidth];
-			if (memcmp(&hashes[index * m_HashWidth], nextTarget, m_HashWidth) == 0)
-			{
-				std::vector<uint8_t> hash(nextTarget, nextTarget + m_HashWidth);
-				m_Match = std::string((char*)m_BufferPointers[index], m_Length);
-				Callback(std::move(hash), m_Match);
-				m_Matched++;
-			}
+			// const uint8_t* foundhash = m_Targets + found * m_HashWidth;
+			std::vector<uint8_t> hash(found, found + m_HashWidth);
+			m_Match = std::string((char*)m_BufferPointers[index], m_Length);
+			Callback(std::move(hash), m_Match);
+			m_Matched++;
 		}
 	}
 }
