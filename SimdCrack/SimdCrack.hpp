@@ -36,6 +36,7 @@ public:
     void SetBlocksize(const size_t BlockSize) { m_Blocksize = BlockSize; };
     void SetAlgorithm(const Algorithm Algo);
     void SetHashList(const std::filesystem::path File) { m_HashList = File; };
+    void SetBinaryHashList(const std::filesystem::path File) { m_BinaryHashList = File; };
     void SetThreads(const size_t Threads) { m_Threads = Threads; };
 private:
     void ProcessContext(PreimageContext*);
@@ -57,7 +58,9 @@ private:
     Algorithm m_Algorithm = Algorithm::sha1;
     size_t m_HashWidth = SHA256_SIZE;
     std::filesystem::path m_HashList;
-    uint8_t* m_Targets;
+    std::filesystem::path m_BinaryHashList;
+    FILE* m_BinaryFd = nullptr;
+    uint8_t* m_Targets = nullptr;
     size_t   m_TargetsAllocated;
     size_t   m_TargetsCount;
 };

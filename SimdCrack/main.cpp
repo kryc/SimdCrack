@@ -37,6 +37,7 @@ int main(
 	size_t blocksize;
 	Algorithm algo;
 	std::filesystem::path hashlist;
+	std::filesystem::path binaryHashlist;
 	size_t threads;
 
 	algo = Algorithm::sha256;
@@ -157,6 +158,21 @@ int main(
 				return 1;
 			}
 		}
+		else if (arg == "--binarylist" || arg == "-bl")
+		{
+			if (argc == i)
+			{
+				std::cerr << "No value specified for " << arg << std::endl;
+				return 1;
+			}
+
+			binaryHashlist = argv[++i];
+			if (!std::filesystem::exists(binaryHashlist))
+			{
+				std::cerr << "Hash list file not found " << binaryHashlist << std::endl;
+				return 1;
+			}
+		}
 		else
 		{
 			assert(arg[0] != '-');
@@ -179,6 +195,11 @@ int main(
 	if (!hashlist.empty())
 	{
 		cracker->SetHashList(hashlist);
+	}
+
+	if (!binaryHashlist.empty())
+	{
+		cracker->SetBinaryHashList(binaryHashlist);
 	}
 	
 	if (blocksize != 0)

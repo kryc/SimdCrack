@@ -1,5 +1,6 @@
 #include <fstream>
 #include <mutex>
+#include <sys/mman.h>
 
 #include "SimdCrack.hpp"
 #include "SharedRefptr.hpp"
@@ -10,7 +11,15 @@ SimdCrack::~SimdCrack(
     void
 )
 {
-    free(m_Targets);
+    if (m_BinaryFd != nullptr)
+    {
+        free(m_Targets);
+    }
+    else
+    {
+        munmap(m_Targets, m_TargetsCount * m_HashWidth);
+        fclose(m_BinaryFd);
+    }
 }
 
 void
@@ -123,6 +132,18 @@ SimdCrack::ProcessHashList(
             }
         }
     }
+    else if (!m_BinaryHashList.empty())
+    {
+        size_t len = std::filesystem::file_size(m_BinaryHashList);
+        m_TargetsCount = len / m_HashWidth;
+        m_BinaryFd = fopen(m_BinaryHashList.c_str(), "rb");
+        m_Targets = (uint8_t*)mmap(nullptr, len, PROT_READ|PROT_WRITE, MAP_PRIVATE, fileno(m_BinaryFd), 0);
+        if (m_Targets == MAP_FAILED)
+        {
+            std::cerr << "Error mapping hash list file" << std::endl;
+            return false;
+        }
+    }
     else
     {
         for (auto& target : m_Target)
@@ -134,7 +155,10 @@ SimdCrack::ProcessHashList(
         }
     }
 
-    qsort_r(m_Targets, m_TargetsCount, m_HashWidth, comparator, (void*)m_HashWidth);
+    if (m_BinaryHashList.empty())
+    {
+        qsort_r(m_Targets, m_TargetsCount, m_HashWidth, comparator, (void*)m_HashWidth);
+    }
 
     return true;
 }
@@ -162,7 +186,7 @@ SimdCrack::FoundResult(
     {
         printf("%02x", Hash[i]);
     }
-    std::cout << ": " << Result << std::endl;
+    std::cout << " " << Result << std::endl;
     m_Found++;
 
     //
