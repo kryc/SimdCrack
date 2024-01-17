@@ -1,6 +1,8 @@
+#include <chrono>
 #include <fstream>
 #include <mutex>
 #include <sys/mman.h>
+#include <inttypes.h>
 
 #include "SimdCrack.hpp"
 #include "SharedRefptr.hpp"
@@ -50,6 +52,14 @@ SimdCrack::InitAndRun(
         return;
     }
 
+    //
+    // Open the output file handle
+    //
+    if(!m_Outfile.empty())
+    {
+        m_OutfileStream.open(m_Outfile, std::ofstream::out);
+    }
+
     m_DispatchPool = dispatch::CreateDispatchPool("pool", m_Threads);
 
     std::cerr << "Starting cracking using " << m_Threads << " threads" << std::endl;
@@ -60,6 +70,7 @@ SimdCrack::InitAndRun(
             dispatch::bind(
                 &SimdCrack::GenerateBlocks,
                 this,
+                i,
                 i + 1,
                 m_Threads
             )
@@ -183,15 +194,28 @@ SimdCrack::FoundResult(
 {
     assert(dispatch::CurrentDispatcher() == dispatch::GetDispatcher("main").get());
 
+    m_LastWord = Result;
+    m_Found++;
+
+    char hashstring[MAX_BUFFER_SIZE * 2 + 1];
+    hashstring[0] = '\0';
+    for (size_t i = 0; i < Hash.size(); i++)
+    {
+        // Sprintf is safe here as we know the buffer will always be big enough
+        sprintf(&hashstring[i * 2], "%02x", Hash[i]);
+    }
+
     //
     // Output it
     //
-    for (size_t i = 0; i < Hash.size(); i++)
+    if (m_OutfileStream.is_open())
     {
-        printf("%02x", Hash[i]);
+        m_OutfileStream << hashstring << " " << Result << std::endl;
     }
-    std::cout << " " << Result << std::endl;
-    m_Found++;
+    else
+    {
+        std::cout << hashstring << " " << Result << std::endl;
+    }
 
     //
     // Check if we have found all
@@ -272,6 +296,7 @@ SimdCrack::GenerateBlock(
 
 void
 SimdCrack::GenerateBlocks(
+    const size_t ThreadId,
     const size_t Start,
     const size_t Step
 )
@@ -279,6 +304,8 @@ SimdCrack::GenerateBlocks(
     std::string word;
     PreimageContext ctx(m_Algorithm, m_Targets, m_TargetsCount);
     size_t index;
+
+    auto start = std::chrono::system_clock::now();
 
     index = Start;
 
@@ -304,12 +331,82 @@ SimdCrack::GenerateBlocks(
         );
     }
 
+    auto end = std::chrono::system_clock::now();
+    auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    dispatch::PostTaskToDispatcher(
+        "main",
+        dispatch::bind(
+            &SimdCrack::ThreadPulse,
+            this,
+            ThreadId,
+            elapsed_ms.count(),
+            ctx.GetLastEntry()
+        )
+    );
+
     dispatch::PostTaskFast(
         dispatch::bind(
             &SimdCrack::GenerateBlocks,
             this,
+            ThreadId,
             index,
             Step
         )
     );
+}
+
+void
+SimdCrack::ThreadPulse(
+    const size_t ThreadId,
+    const uint64_t BlockTime,
+    const std::string Last
+)
+{
+    char statusbuf[64];
+
+    assert(dispatch::CurrentDispatcher() == dispatch::GetDispatcher("main").get());
+
+    m_BlocksCompleted++;
+    m_LastBlockMs[ThreadId] = BlockTime;
+
+    if (!m_Outfile.empty())
+    {
+        uint64_t averageMs = 0;
+        for (auto const& [thread, val] : m_LastBlockMs)
+        {
+            averageMs += val;
+        }
+        averageMs /= m_Threads;
+        
+        double hashesPerSec = (double)(averageMs * m_Blocksize * SIMD_COUNT);
+        char multiplechar = ' ';
+        if (hashesPerSec > 1000000000.f)
+        {
+            hashesPerSec /= 1000000000.f;
+            multiplechar = 'b';
+        }
+        else if (hashesPerSec > 1000000.f)
+        {
+            hashesPerSec /= 1000000.f;
+            multiplechar = 'm';
+        }
+        else if (hashesPerSec > 1000.f)
+        {
+            hashesPerSec /= 1000.f;
+            multiplechar = 'k';
+        }
+
+
+        statusbuf[sizeof(statusbuf) - 1] = '\0';
+        memset(statusbuf, '\b', sizeof(statusbuf) - 1);
+        fprintf(stderr, "%s", statusbuf);
+        memset(statusbuf, ' ', sizeof(statusbuf) - 1);
+        int count = snprintf(statusbuf, sizeof(statusbuf), "H/s:%.1lf%c L:\"%s\"", hashesPerSec, multiplechar, Last.c_str());
+        if (count < sizeof(statusbuf) - 1)
+        {
+            statusbuf[count] = ' ';
+        }
+        fprintf(stderr, "%s", statusbuf);
+    }
 }

@@ -40,7 +40,8 @@ public:
 	const std::string GetMatch(void) const { return m_Match; };
 	const bool 		Matched(void) const { return m_Matched; };
 	const size_t 	GetLength(void) const { return m_Length; };
-	size_t 	GetLastIndex(void) { return m_LastIndex; };
+	size_t 	GetLastIndex(void) const { return m_LastIndex; };
+	const std::string GetLastEntry(void) const { return GetEntry(GetLastIndex()); };
 private:
 	size_t 		m_Length = (size_t)-1;
 	std::vector<uint8_t> m_Buffer;

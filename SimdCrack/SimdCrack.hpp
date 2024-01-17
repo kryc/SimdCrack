@@ -13,6 +13,7 @@
 #include <thread>
 #include <atomic>
 #include <filesystem>
+#include <fstream>
 
 #include "Algorithm.hpp"
 #include "PreimageContext.hpp"
@@ -38,15 +39,17 @@ public:
     void SetHashList(const std::filesystem::path File) { m_HashList = File; };
     void SetBinaryHashList(const std::filesystem::path File) { m_BinaryHashList = File; };
     void SetThreads(const size_t Threads) { m_Threads = Threads; };
+    void SetOutFile(const std::filesystem::path Outfile) { m_Outfile = Outfile; }
 private:
-    void ProcessContext(PreimageContext*);
+    void ProcessContext(PreimageContext* Context);
     void GenerateBlock(PreimageContext* Context, const size_t Start, const size_t Step, size_t* Next);
-    void GenerateBlocks(const size_t Start, const size_t Step);
+    void GenerateBlocks(const size_t ThreadId, const size_t Start, const size_t Step);
     void BlockProcessed(const std::vector<uint8_t> Hash, const std::string Result);
     void FoundResult(const std::vector<uint8_t> Hash, const std::string Result);
     bool ProcessHashList(void);
     bool AddHashToList(const std::string Hash);
     bool AddHashToList(const uint8_t* Hash);
+    void ThreadPulse(const size_t ThreadId, const uint64_t BlockTime, const std::string Last);
 
     dispatch::DispatcherPoolPtr m_DispatchPool;
     std::vector<std::vector<uint8_t>> m_Target;
@@ -54,7 +57,7 @@ private:
     WordGenerator m_Generator;
     size_t m_Found = 0;
     size_t m_Threads = 0;
-    size_t m_Blocksize = 10000;
+    size_t m_Blocksize = 500000;
     Algorithm m_Algorithm = Algorithm::sha1;
     size_t m_HashWidth = SHA256_SIZE;
     std::filesystem::path m_HashList;
@@ -63,6 +66,11 @@ private:
     uint8_t* m_Targets = nullptr;
     size_t   m_TargetsAllocated;
     size_t   m_TargetsCount;
+    size_t   m_BlocksCompleted;
+    std::map<size_t, uint64_t> m_LastBlockMs;
+    std::string m_LastWord;
+    std::string m_Outfile;
+    std::ofstream m_OutfileStream;
 };
 
 #endif // SimdCrack_hpp

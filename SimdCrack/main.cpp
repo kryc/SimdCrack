@@ -39,6 +39,7 @@ int main(
 	std::filesystem::path hashlist;
 	std::filesystem::path binaryHashlist;
 	size_t threads;
+	std::string outfile;
 
 	algo = Algorithm::sha256;
 	threads = 0;
@@ -57,7 +58,16 @@ int main(
 	for (int i = 1; i < argc; i++)
 	{
 		std::string arg = argv[i];
-		if (arg == "--blocksize" || arg == "-b")
+		if (arg == "--outfile" || arg == "-o")
+		{
+			if (argc <= i)
+			{
+				std::cerr << "No value specified for " << arg << std::endl;
+				return 1;
+			}
+			outfile = argv[++i];
+		}
+		else if (arg == "--blocksize" || arg == "-b")
 		{
 			if (argc <= i)
 			{
@@ -214,6 +224,11 @@ int main(
 	if (threads != 0)
 	{
 		cracker->SetThreads(threads);
+	}
+
+	if (!outfile.empty())
+	{
+		cracker->SetOutFile(outfile);
 	}
 
 	//
