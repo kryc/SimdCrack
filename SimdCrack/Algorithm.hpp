@@ -12,7 +12,8 @@
 enum class Algorithm
 {
     sha256,
-    sha1
+    sha1,
+    md5
 };
 
 #endif

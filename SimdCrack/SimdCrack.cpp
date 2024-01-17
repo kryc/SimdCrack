@@ -40,6 +40,10 @@ SimdCrack::InitAndRun(
     {
         m_HashWidth = SHA1_SIZE;
     }
+    else if (m_Algorithm == Algorithm::md5)
+    {
+        m_HashWidth = MD5_SIZE;
+    }
 
     if(!ProcessHashList())
     {
@@ -122,7 +126,7 @@ SimdCrack::ProcessHashList(
         {
             if (line.size() != m_HashWidth * 2)
             {
-                std::cerr << "Invalid hash found, ignoring: " << line << std::endl;
+                std::cerr << "Invalid hash found, ignoring " << line.size() << "!=" << m_HashWidth*2 << ": \"" << line << "\"" << std::endl;
                 continue;
             }
 

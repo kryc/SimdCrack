@@ -139,9 +139,13 @@ int main(
 
 			extra = argv[++i];
 		}
-		else if (arg == "--sha1" || arg == "-s1")
+		else if (arg == "--sha1")
 		{
 			algo = Algorithm::sha1;
+		}
+		else if (arg == "--md5")
+		{
+			algo = Algorithm::md5;
 		}
 		else if (arg == "--list" || arg == "-l")
 		{

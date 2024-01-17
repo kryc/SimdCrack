@@ -26,14 +26,18 @@ PreimageContext::PreimageContext(
 	m_Targets = Targets;
 	m_TargetsCount = TargetCount;
 
-	if (m_Algorithm == Algorithm::sha1)
-	{
-		m_HashWidth = SHA1_SIZE;
-	}
-	else
-	{
-		m_HashWidth = SHA256_SIZE;
-	}
+    if (m_Algorithm == Algorithm::sha256)
+    {
+        m_HashWidth = SHA256_SIZE;
+    }
+    else if (m_Algorithm == Algorithm::sha1)
+    {
+        m_HashWidth = SHA1_SIZE;
+    }
+    else if (m_Algorithm == Algorithm::md5)
+    {
+        m_HashWidth = MD5_SIZE;
+    }
 }
 
 void
@@ -146,23 +150,31 @@ PreimageContext::CheckAndHandle(
 	ResultHandler Callback
 )
 {
-	SimdShaContext shaContext;
+	SimdHashContext shaContext;
 	uint8_t hashes[m_HashWidth * SIMD_COUNT];
 
 	if (m_Algorithm == Algorithm::sha256)
 	{
-		SimdSha256Init(&shaContext, SIMD_COUNT);
+		SimdSha256Init(&shaContext);
 		SimdSha256Update(&shaContext, m_Length, (const uint8_t**)m_BufferPointers);
 		SimdSha256Finalize(&shaContext);
-		SimdSha256GetHashesUnrolled(&shaContext, (uint8_t*)hashes);
+		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
 	}
 	else if (m_Algorithm == Algorithm::sha1)
 	{
-		SimdSha1Init(&shaContext, SIMD_COUNT);
+		SimdSha1Init(&shaContext);
 		SimdSha1Update(&shaContext, m_Length, (const uint8_t**)m_BufferPointers);
 		SimdSha1Finalize(&shaContext);
-		SimdSha1GetHashesUnrolled(&shaContext, (uint8_t*)hashes);
+		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
 	}
+	else if (m_Algorithm == Algorithm::md5)
+	{
+		SimdMd5Init(&shaContext);
+		SimdMd5Update(&shaContext, m_Length, (const uint8_t**)m_BufferPointers);
+		SimdMd5Finalize(&shaContext);
+		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
+	}
+
 
 	// ssize_t found;
 	for (size_t index = 0; index < GetEntryCount(); index++)

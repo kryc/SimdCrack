@@ -3,3 +3,5 @@ SimdCrack.xcodeproj/xcuserdata/
 SimdCrack/*.d
 SimdCrack/*.o
 SimdCrack/simdcrack
+SimdCrack/build
+.vscode

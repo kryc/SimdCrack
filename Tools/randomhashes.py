@@ -9,5 +9,5 @@ with open(sys.argv[1], 'wt', encoding='utf8') as fh:
         word = ''
         for c in range(wordlen):
             word += random.choice(string.ascii_lowercase)
-        sha256 = hashlib.sha256(word.encode('utf8')).hexdigest()
+        sha256 = hashlib.md5(word.encode('utf8')).hexdigest()
         fh.write(f'{sha256}\n')
