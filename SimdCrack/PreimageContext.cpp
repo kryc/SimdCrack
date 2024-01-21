@@ -25,6 +25,7 @@ PreimageContext::PreimageContext(
 	m_Algorithm = Algo;
 	m_Targets = Targets;
 	m_TargetsCount = TargetCount;
+	m_SimdLanes = SimdLanes();
 
     if (m_Algorithm == Algorithm::sha256)
     {
@@ -57,9 +58,10 @@ PreimageContext::Initialize(
 	if (previousLength != Length)
 	{
 		m_Length = Length;
-		m_Buffer.reserve(m_Length * SIMD_COUNT);
+		m_Buffer.reserve(m_Length * m_SimdLanes);
+		m_BufferPointers.resize(m_SimdLanes);
 		
-		for (size_t i = 0; i < SIMD_COUNT; i++)
+		for (size_t i = 0; i < m_SimdLanes; i++)
 		{
 			m_BufferPointers[i] = &m_Buffer[m_Length * i];
 		}
@@ -156,21 +158,21 @@ PreimageContext::CheckAndHandle(
 	if (m_Algorithm == Algorithm::sha256)
 	{
 		SimdSha256Init(&shaContext);
-		SimdSha256Update(&shaContext, m_Length, (const uint8_t**)m_BufferPointers);
+		SimdSha256Update(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
 		SimdSha256Finalize(&shaContext);
 		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
 	}
 	else if (m_Algorithm == Algorithm::sha1)
 	{
 		SimdSha1Init(&shaContext);
-		SimdSha1Update(&shaContext, m_Length, (const uint8_t**)m_BufferPointers);
+		SimdSha1Update(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
 		SimdSha1Finalize(&shaContext);
 		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
 	}
 	else if (m_Algorithm == Algorithm::md5)
 	{
 		SimdMd5Init(&shaContext);
-		SimdMd5Update(&shaContext, m_Length, (const uint8_t**)m_BufferPointers);
+		SimdMd5Update(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
 		SimdMd5Finalize(&shaContext);
 		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
 	}

@@ -21,6 +21,8 @@
 
 using ResultHandler = std::function<void(const std::vector<uint8_t>, const std::string)>;
 
+const size_t SIMD_COUNT = SimdLanes();
+
 class PreimageContext{
 public:
 	PreimageContext(const Algorithm Algo, const uint8_t* Targets, const size_t TargetCount);
@@ -44,8 +46,8 @@ public:
 	const std::string GetLastEntry(void) const { return GetEntry(GetLastIndex()); };
 private:
 	size_t 		m_Length = (size_t)-1;
-	std::vector<uint8_t> m_Buffer;
-	uint8_t* 	m_BufferPointers[SIMD_COUNT] = {nullptr};
+	std::vector<uint8_t>  m_Buffer;
+	std::vector<uint8_t*> m_BufferPointers;
 	size_t   	m_NextEntry = 0;
 	std::string m_Match;
 	size_t 	 	m_Matched = 0;
@@ -54,6 +56,7 @@ private:
     size_t   m_TargetsCount;
 	size_t 	 m_HashWidth = SHA256_SIZE;
 	Algorithm m_Algorithm = Algorithm::sha256;
+	size_t   m_SimdLanes;
 };
 
 #endif /* PreimageContext_hpp */
