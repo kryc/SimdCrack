@@ -21,7 +21,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # set compiler flags
 set(STD_COMPILE_FLAGS "-Wall -Werror -fno-exceptions -g -O3")
-set(STD_LINKER_FLAGS "-lpthread")
+set(STD_LINKER_FLAGS "-lpthread -lgmpxx -lgmp")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STD_COMPILE_FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${STD_COMPILE_FLAGS}")

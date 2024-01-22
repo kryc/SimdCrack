@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include <gmpxx.h>
+
 static const std::string LOWER = "abcdefghijklmnopqrstuvwxyz";
 static const std::string UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 static const std::string ALPHA = LOWER + UPPER;
@@ -30,6 +32,8 @@ public:
         : m_Charset(Charset),m_Prefix(Prefix),m_Postfix(Postfix) {};
     static std::string GenerateWord(const size_t Value, const std::string& Charset, const bool Reverse = true);
     const std::string Generate(const size_t Value, const bool Reverse = true);
+    static std::string GenerateWord(const mpz_class Value, const std::string& Charset, const bool Reverse = true);
+    const std::string Generate(const mpz_class Value, const bool Reverse = true);
     void SetPrefix(std::string& Prefix) { m_Prefix = Prefix; };
     void SetPostfix(std::string& Postfix) { m_Postfix = Postfix; };
 private:

@@ -1,8 +1,9 @@
 #include <chrono>
 #include <fstream>
+#include <inttypes.h>
+#include <gmp.h>
 #include <mutex>
 #include <sys/mman.h>
-#include <inttypes.h>
 
 #include "SimdCrack.hpp"
 #include "SharedRefptr.hpp"
@@ -66,12 +67,14 @@ SimdCrack::InitAndRun(
 
     for (size_t i = 0; i < m_Threads; i++)
     {
+        mpz_class start(i + 1);
+
         m_DispatchPool->PostTask(
             dispatch::bind(
                 &SimdCrack::GenerateBlocks,
                 this,
                 i,
-                i + 1,
+                std::move(start),
                 m_Threads
             )
         );
@@ -271,12 +274,12 @@ SimdCrack::ProcessContext(
 void
 SimdCrack::GenerateBlock(
     PreimageContext* Context,
-    const size_t Start,
+    const mpz_class  Start,
     const size_t Step,
-    size_t* Next
+    mpz_class* Next
 )
 {
-    size_t index = Start;
+    mpz_class index(Start);
     size_t wordSize = 0;
     std::string word;
 
@@ -297,17 +300,15 @@ SimdCrack::GenerateBlock(
 void
 SimdCrack::GenerateBlocks(
     const size_t ThreadId,
-    const size_t Start,
+    const mpz_class Start,
     const size_t Step
 )
 {
     std::string word;
     PreimageContext ctx(m_Algorithm, m_Targets, m_TargetsCount);
-    size_t index;
+    mpz_class index(Start);
 
     auto start = std::chrono::system_clock::now();
-
-    index = Start;
 
     //
     // Generate _count_ blocks (contexts)

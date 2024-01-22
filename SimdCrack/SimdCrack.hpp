@@ -6,14 +6,15 @@
 //  Copyright © 2020 Kryc. All rights reserved.
 //
 
-#include <map>
-#include <vector>
 #include <cstdint>
-#include <iostream>
-#include <thread>
-#include <atomic>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
+#include <map>
+#include <thread>
+#include <vector>
+
+#include <gmpxx.h>
 
 #include "Algorithm.hpp"
 #include "PreimageContext.hpp"
@@ -42,8 +43,8 @@ public:
     void SetOutFile(const std::filesystem::path Outfile) { m_Outfile = Outfile; }
 private:
     void ProcessContext(PreimageContext* Context);
-    void GenerateBlock(PreimageContext* Context, const size_t Start, const size_t Step, size_t* Next);
-    void GenerateBlocks(const size_t ThreadId, const size_t Start, const size_t Step);
+    void GenerateBlock(PreimageContext* Context, const mpz_class Start, const size_t Step, mpz_class* Next);
+    void GenerateBlocks(const size_t ThreadId, const mpz_class Start, const size_t Step);
     void BlockProcessed(const std::vector<uint8_t> Hash, const std::string Result);
     void FoundResult(const std::vector<uint8_t> Hash, const std::string Result);
     bool ProcessHashList(void);
