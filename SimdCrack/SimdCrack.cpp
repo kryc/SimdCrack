@@ -67,7 +67,7 @@ SimdCrack::InitAndRun(
 
     for (size_t i = 0; i < m_Threads; i++)
     {
-        mpz_class start(i + 1);
+        mpz_class start(m_Resume + i + 1);
 
         m_DispatchPool->PostTask(
             dispatch::bind(
@@ -380,7 +380,7 @@ SimdCrack::ThreadPulse(
         }
         averageMs /= m_Threads;
         
-        double hashesPerSec = (double)(averageMs * m_Blocksize * SIMD_COUNT);
+        double hashesPerSec = (double)(averageMs * m_Blocksize * SIMD_COUNT) / 1000.f;
         char multiplechar = ' ';
         if (hashesPerSec > 1000000000.f)
         {
@@ -403,7 +403,16 @@ SimdCrack::ThreadPulse(
         memset(statusbuf, '\b', sizeof(statusbuf) - 1);
         fprintf(stderr, "%s", statusbuf);
         memset(statusbuf, ' ', sizeof(statusbuf) - 1);
-        int count = snprintf(statusbuf, sizeof(statusbuf), "H/s:%.1lf%c L:\"%s\"", hashesPerSec, multiplechar, Last.c_str());
+        int count = snprintf(
+            statusbuf, sizeof(statusbuf),
+            "H/s:%.1lf%c C:%zu/%zu L:\"%s\" C:\"%s\"",
+                hashesPerSec,
+                multiplechar,
+                m_Found,
+                m_TargetsCount,
+                m_LastWord.c_str(),
+                Last.c_str()
+        );
         if (count < sizeof(statusbuf) - 1)
         {
             statusbuf[count] = ' ';

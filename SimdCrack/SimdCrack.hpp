@@ -41,6 +41,7 @@ public:
     void SetBinaryHashList(const std::filesystem::path File) { m_BinaryHashList = File; };
     void SetThreads(const size_t Threads) { m_Threads = Threads; };
     void SetOutFile(const std::filesystem::path Outfile) { m_Outfile = Outfile; }
+    void SetResume(const mpz_class Resume) { m_Resume = Resume; };
 private:
     void ProcessContext(PreimageContext* Context);
     void GenerateBlock(PreimageContext* Context, const mpz_class Start, const size_t Step, mpz_class* Next);
@@ -72,6 +73,7 @@ private:
     std::string m_LastWord;
     std::string m_Outfile;
     std::ofstream m_OutfileStream;
+    mpz_class m_Resume;
 };
 
 #endif // SimdCrack_hpp

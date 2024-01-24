@@ -87,3 +87,59 @@ WordGenerator::Generate(
 {
     return m_Prefix + GenerateWord(Value, m_Charset, Reverse) + m_Postfix;
 }
+
+//
+// static
+//
+const mpz_class
+WordGenerator::Parse(
+    const std::string& Word,
+    const std::string& Charset
+)
+{
+    mpz_class num;
+    for (const char& c : Word)
+    {
+        num = num * Charset.size() + Charset.find_first_of(c);
+    }
+    return ++num;
+}
+
+//
+// static
+//
+const mpz_class
+WordGenerator::Parse(
+    const std::string& Word,
+    const std::vector<uint8_t>& LookupTable
+)
+{
+    mpz_class num;
+    for (const char& c : Word)
+    {
+        num = num * LookupTable[256] + LookupTable[c];
+    }
+    return ++num;
+}
+
+//
+// static
+//
+const std::vector<uint8_t>
+WordGenerator::GenerateParsingLookupTable(
+    const std::string& Charset
+)
+{
+    std::vector<uint8_t> table;
+
+    table.resize(256);
+    memset(&table[0], 0, table.size());
+    table[256] = Charset.size();
+
+    for (const char& c : Charset)
+    {
+        table[c] = Charset.find_first_of(c);
+    }
+
+    return table;
+}

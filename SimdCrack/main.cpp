@@ -17,6 +17,8 @@
 #include <sstream>
 #include <filesystem>
 #include <assert.h>
+#include <gmpxx.h>
+
 #include "PreimageContext.hpp"
 #include "Util.hpp"
 #include "WordGenerator.hpp"
@@ -40,6 +42,8 @@ int main(
 	std::filesystem::path binaryHashlist;
 	size_t threads;
 	std::string outfile;
+	std::string resume;
+	mpz_class resumeIndex;
 
 	algo = Algorithm::sha256;
 	threads = 0;
@@ -66,6 +70,15 @@ int main(
 				return 1;
 			}
 			outfile = argv[++i];
+		}
+		else if (arg == "--resume" || arg == "-r")
+		{
+			if (argc <= i)
+			{
+				std::cerr << "No value specified for " << arg << std::endl;
+				return 1;
+			}
+			resume = argv[++i];
 		}
 		else if (arg == "--blocksize" || arg == "-b")
 		{
@@ -229,6 +242,12 @@ int main(
 	if (!outfile.empty())
 	{
 		cracker->SetOutFile(outfile);
+	}
+
+	if (!resume.empty())
+	{
+		resumeIndex = generator.Parse(resume);
+		cracker->SetResume(std::move(resumeIndex));
 	}
 
 	//

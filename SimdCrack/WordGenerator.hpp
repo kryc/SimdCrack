@@ -34,10 +34,17 @@ public:
     const std::string Generate(const size_t Value, const bool Reverse = true);
     static std::string GenerateWord(const mpz_class Value, const std::string& Charset, const bool Reverse = true);
     const std::string Generate(const mpz_class Value, const bool Reverse = true);
+    static const std::vector<uint8_t> GenerateParsingLookupTable(const std::string& Charset);
+    const std::vector<uint8_t> GenerateParsingLookupTable(void) const { return GenerateParsingLookupTable(m_Charset); };
+    static const mpz_class Parse(const std::string& Word, const std::string& Charset);
+    static const mpz_class Parse(const std::string& Word, const std::vector<uint8_t>& LookupTable);
+    const mpz_class Parse(const std::string& Word) const { return Parse(Word, m_Charset); };
     void SetPrefix(std::string& Prefix) { m_Prefix = Prefix; };
     void SetPostfix(std::string& Postfix) { m_Postfix = Postfix; };
+    const std::string GetCharset(void) { return m_Charset; };
 private:
     const std::string m_Charset;
+    const std::vector<uint8_t> m_LookupTable;
     std::string m_Prefix;
     std::string m_Postfix;
 };
