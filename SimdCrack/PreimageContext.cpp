@@ -19,12 +19,16 @@
 PreimageContext::PreimageContext(
 	const Algorithm Algo,
 	const uint8_t* Targets,
-	const size_t TargetCount
+	const size_t TargetCount,
+	const uint8_t** TargetLookup,
+	const size_t* TargetLookupCount
 )
 {
 	m_Algorithm = Algo;
 	m_Targets = Targets;
 	m_TargetsCount = TargetCount;
+	m_TargetLookup = TargetLookup;
+	m_TargetLookupCounts = TargetLookupCount;
 	m_SimdLanes = SimdLanes();
 
     if (m_Algorithm == Algorithm::sha256)
@@ -158,21 +162,21 @@ PreimageContext::CheckAndHandle(
 	if (m_Algorithm == Algorithm::sha256)
 	{
 		SimdSha256Init(&shaContext);
-		SimdSha256Update(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
+		SimdHashUpdateAll(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
 		SimdSha256Finalize(&shaContext);
 		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
 	}
 	else if (m_Algorithm == Algorithm::sha1)
 	{
 		SimdSha1Init(&shaContext);
-		SimdSha1Update(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
+		SimdHashUpdateAll(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
 		SimdSha1Finalize(&shaContext);
 		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
 	}
 	else if (m_Algorithm == Algorithm::md5)
 	{
 		SimdMd5Init(&shaContext);
-		SimdMd5Update(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
+		SimdHashUpdateAll(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
 		SimdMd5Finalize(&shaContext);
 		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
 	}
@@ -182,10 +186,11 @@ PreimageContext::CheckAndHandle(
 	for (size_t index = 0; index < GetEntryCount(); index++)
 	{
 		// Binary search
+		uint8_t lookupByte = hashes[index * m_HashWidth];
 		auto found = binary_search(
-			m_Targets,
+			m_TargetLookup[lookupByte],
 			&hashes[index * m_HashWidth],
-			m_TargetsCount,
+			m_TargetLookupCounts[lookupByte],
 			m_HashWidth
 		);
 

@@ -155,12 +155,20 @@ SimdCrack::ProcessHashList(
         size_t len = std::filesystem::file_size(m_BinaryHashList);
         m_TargetsCount = len / m_HashWidth;
         m_BinaryFd = fopen(m_BinaryHashList.c_str(), "rb");
-        m_Targets = (uint8_t*)mmap(nullptr, len, PROT_READ|PROT_WRITE, MAP_PRIVATE, fileno(m_BinaryFd), 0);
+        // m_Targets = (uint8_t*)mmap(nullptr, len, PROT_READ|PROT_WRITE, MAP_PRIVATE, fileno(m_BinaryFd), 0);
+        m_Targets = (uint8_t*)malloc(len);
+        fread(m_Targets, len, 1, m_BinaryFd);
         if (m_Targets == MAP_FAILED)
         {
             std::cerr << "Error mapping hash list file" << std::endl;
             return false;
         }
+        auto ret = madvise(m_Targets, len, MADV_RANDOM | MADV_WILLNEED);
+        if (ret != 0)
+        {
+            std::cerr << "Madvise not happy" << std::endl;
+        }
+
     }
     else
     {
@@ -175,8 +183,30 @@ SimdCrack::ProcessHashList(
 
     if (m_BinaryHashList.empty())
     {
-        qsort_r(m_Targets, m_TargetsCount, m_HashWidth, comparator, (void*)m_HashWidth);
+        std::cerr << "Sorting hashes" << std::endl;
+        qsort_r(m_Targets, m_TargetsCount, m_HashWidth, (__compar_d_fn_t)memcmp, (void*)m_HashWidth);
     }
+
+    // if (m_TargetsCount > 1024)
+    // {
+        std::cerr << "Generating lookup table" << std::endl;
+        uint8_t lastByte = m_Targets[0];
+        m_TargetLookup[lastByte] = &m_Targets[0];
+        m_TargetLookupCounts[lastByte] = 1;
+        for (size_t i = m_HashWidth; i < m_TargetsCount * m_HashWidth; i+=m_HashWidth)
+        {
+            if (m_Targets[i] == lastByte)
+            {
+                m_TargetLookupCounts[lastByte]++;
+            }
+            else
+            {
+                lastByte = m_Targets[i];
+                m_TargetLookup[lastByte] = &m_Targets[i];
+                m_TargetLookupCounts[lastByte] = 1;
+            }
+        }
+    // }
 
     return true;
 }
@@ -305,7 +335,12 @@ SimdCrack::GenerateBlocks(
 )
 {
     std::string word;
-    PreimageContext ctx(m_Algorithm, m_Targets, m_TargetsCount);
+    PreimageContext ctx(
+        m_Algorithm,
+        m_Targets,
+        m_TargetsCount,
+        (const uint8_t**)m_TargetLookup,
+        (const size_t*)m_TargetLookupCounts);
     mpz_class index(Start);
 
     auto start = std::chrono::system_clock::now();
