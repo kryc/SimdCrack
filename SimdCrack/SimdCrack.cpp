@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <inttypes.h>
@@ -156,7 +157,7 @@ SimdCrack::ProcessHashList(
         m_TargetsCount = len / m_HashWidth;
         m_BinaryFd = fopen(m_BinaryHashList.c_str(), "rb");
         // m_Targets = (uint8_t*)mmap(nullptr, len, PROT_READ|PROT_WRITE, MAP_PRIVATE, fileno(m_BinaryFd), 0);
-        m_Targets = (uint8_t*)malloc(len);
+        m_Targets = (uint8_t*)mmap(nullptr, len, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
         fread(m_Targets, len, 1, m_BinaryFd);
         if (m_Targets == MAP_FAILED)
         {
@@ -230,12 +231,12 @@ SimdCrack::FoundResult(
     m_LastWord = Result;
     m_Found++;
 
-    char hashstring[MAX_BUFFER_SIZE * 2 + 1];
-    hashstring[0] = '\0';
+    std::string hashstring;
+    hashstring.resize(MAX_BUFFER_SIZE * 2 + 1);
     for (size_t i = 0; i < Hash.size(); i++)
     {
         // Sprintf is safe here as we know the buffer will always be big enough
-        sprintf(&hashstring[i * 2], "%02x", Hash[i]);
+        sprintf(&hashstring[i * 2], "%02X", Hash[i]);
     }
 
     //
