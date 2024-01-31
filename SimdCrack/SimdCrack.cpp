@@ -122,6 +122,18 @@ SimdCrack::AddHashToList(
     return AddHashToList(&nexthash[0]);
 }
 
+#ifdef __APPLE__
+int
+Compare(
+    void* Length,
+    const void* Value1,
+    const void* Value2
+)
+{
+    return memcmp(Value1, Value2, (size_t)Length);
+}
+#endif
+
 bool
 SimdCrack::ProcessHashList(
     void
@@ -185,7 +197,11 @@ SimdCrack::ProcessHashList(
     if (m_BinaryHashList.empty())
     {
         std::cerr << "Sorting hashes" << std::endl;
+#ifdef __APPLE__
+        qsort_r(m_Targets, m_TargetsCount, m_HashWidth, (void*)m_HashWidth, Compare);
+#else
         qsort_r(m_Targets, m_TargetsCount, m_HashWidth, (__compar_d_fn_t)memcmp, (void*)m_HashWidth);
+#endif
     }
 
     // if (m_TargetsCount > 1024)
@@ -236,7 +252,7 @@ SimdCrack::FoundResult(
     for (size_t i = 0; i < Hash.size(); i++)
     {
         // Sprintf is safe here as we know the buffer will always be big enough
-        sprintf(&hashstring[i * 2], "%02X", Hash[i]);
+        snprintf(&hashstring[i * 2], hashstring.length() - (i * 2 + 1), "%02X", Hash[i]);
     }
 
     //

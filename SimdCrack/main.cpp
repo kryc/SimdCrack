@@ -162,6 +162,10 @@ int main(
 
 			extra = argv[++i];
 		}
+		else if (arg == "--sha256")
+		{
+			algo = Algorithm::sha256;
+		}
 		else if (arg == "--sha1")
 		{
 			algo = Algorithm::sha1;

@@ -187,6 +187,10 @@ PreimageContext::CheckAndHandle(
 	{
 		// Binary search
 		uint8_t lookupByte = hashes[index * m_HashWidth];
+		if (m_TargetLookup[lookupByte] == nullptr)
+		{
+			continue;
+		}
 		auto found = binary_search(
 			m_TargetLookup[lookupByte],
 			&hashes[index * m_HashWidth],

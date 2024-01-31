@@ -58,7 +58,7 @@ private:
 	Algorithm m_Algorithm = Algorithm::sha256;
 	size_t   m_SimdLanes;
 	const uint8_t** m_TargetLookup;
-    const uint64_t* m_TargetLookupCounts;
+    const size_t* m_TargetLookupCounts;
 };
 
 #endif /* PreimageContext_hpp */
