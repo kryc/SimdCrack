@@ -74,8 +74,6 @@ private:
     std::string m_Outfile;
     std::ofstream m_OutfileStream;
     mpz_class m_Resume;
-    uint8_t* m_TargetLookup[256];
-    size_t m_TargetLookupCounts[256];
 };
 
 #endif // SimdCrack_hpp

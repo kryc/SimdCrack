@@ -25,7 +25,7 @@ const size_t SIMD_COUNT = SimdLanes();
 
 class PreimageContext{
 public:
-	PreimageContext(const Algorithm Algo, const uint8_t* Targets, const size_t TargetCount, const uint8_t** TargetLookup, const size_t* TargetLookupCount);
+	PreimageContext(const Algorithm Algo, const uint8_t* Targets, const size_t TargetCount);
 	~PreimageContext(void);
 	void   	Initialize(const size_t Length);
 	const bool	Initialized(void) const { return m_Length != (size_t)-1; };
@@ -57,8 +57,6 @@ private:
 	size_t 	 m_HashWidth = SHA256_SIZE;
 	Algorithm m_Algorithm = Algorithm::sha256;
 	size_t   m_SimdLanes;
-	const uint8_t** m_TargetLookup;
-    const size_t* m_TargetLookupCounts;
 };
 
 #endif /* PreimageContext_hpp */

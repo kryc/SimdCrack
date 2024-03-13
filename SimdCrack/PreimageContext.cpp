@@ -19,16 +19,12 @@
 PreimageContext::PreimageContext(
 	const Algorithm Algo,
 	const uint8_t* Targets,
-	const size_t TargetCount,
-	const uint8_t** TargetLookup,
-	const size_t* TargetLookupCount
+	const size_t TargetCount
 )
 {
 	m_Algorithm = Algo;
 	m_Targets = Targets;
 	m_TargetsCount = TargetCount;
-	m_TargetLookup = TargetLookup;
-	m_TargetLookupCounts = TargetLookupCount;
 	m_SimdLanes = SimdLanes();
 
     if (m_Algorithm == Algorithm::sha256)
@@ -186,15 +182,10 @@ PreimageContext::CheckAndHandle(
 	for (size_t index = 0; index < GetEntryCount(); index++)
 	{
 		// Binary search
-		uint8_t lookupByte = hashes[index * m_HashWidth];
-		if (m_TargetLookup[lookupByte] == nullptr)
-		{
-			continue;
-		}
 		auto found = binary_search(
-			m_TargetLookup[lookupByte],
+			m_Targets,
 			&hashes[index * m_HashWidth],
-			m_TargetLookupCounts[lookupByte],
+			m_TargetsCount,
 			m_HashWidth
 		);
 

@@ -54,6 +54,7 @@ int main(
 	if (argc < 2)
 	{
 		std::cerr << "Usage: " << argv[0] << "[options] <target>" << std::endl;
+		std::cerr << "SIMD Lanes: " << SimdLanes() << std::endl;
 		return 0;
 	}
 	
