@@ -11,6 +11,8 @@
 #include "Util.hpp"
 #include "WordGenerator.hpp"
 
+#include "simdhash.h"
+
 SimdCrack::~SimdCrack(
     void
 )
@@ -34,19 +36,6 @@ SimdCrack::InitAndRun(
     if (m_Threads == 0)
     {
         m_Threads = std::thread::hardware_concurrency();
-    }
-
-    if (m_Algorithm == Algorithm::sha256)
-    {
-        m_HashWidth = SHA256_SIZE;
-    }
-    else if (m_Algorithm == Algorithm::sha1)
-    {
-        m_HashWidth = SHA1_SIZE;
-    }
-    else if (m_Algorithm == Algorithm::md5)
-    {
-        m_HashWidth = MD5_SIZE;
     }
 
     if(!ProcessHashList())
@@ -168,20 +157,29 @@ SimdCrack::ProcessHashList(
         size_t len = std::filesystem::file_size(m_BinaryHashList);
         m_TargetsCount = len / m_HashWidth;
         m_BinaryFd = fopen(m_BinaryHashList.c_str(), "rb");
-        // m_Targets = (uint8_t*)mmap(nullptr, len, PROT_READ|PROT_WRITE, MAP_PRIVATE, fileno(m_BinaryFd), 0);
-        m_Targets = (uint8_t*)mmap(nullptr, len, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-        fread(m_Targets, len, 1, m_BinaryFd);
+        m_Targets = (uint8_t*)mmap(nullptr, len, PROT_READ, MAP_SHARED, fileno(m_BinaryFd), 0);
         if (m_Targets == MAP_FAILED)
         {
             std::cerr << "Error mapping hash list file" << std::endl;
             return false;
         }
+        // Inform the kernel that we will be performing random accesses at all offsets
         auto ret = madvise(m_Targets, len, MADV_RANDOM | MADV_WILLNEED);
         if (ret != 0)
         {
             std::cerr << "Madvise not happy" << std::endl;
         }
-
+        // Validate that the file is sorted
+        for (size_t i = 0; i < m_TargetsCount - 1; i++)
+        {
+            uint8_t* smaller = &m_Targets[i * m_HashWidth];
+            uint8_t* larger = &m_Targets[(i + 1) * m_HashWidth];
+            if (memcmp(smaller, larger, m_HashWidth) > 0)
+            {
+                std::cerr << "Binary hash list is not sorted. Exiting" << std::endl;
+                return false;
+            }
+        }
     }
     else
     {
@@ -205,14 +203,6 @@ SimdCrack::ProcessHashList(
     }
 
     return true;
-}
-
-void
-SimdCrack::SetAlgorithm(
-    const Algorithm Algo
-)
-{
-    m_Algorithm = Algo;
 }
 
 void
@@ -283,21 +273,6 @@ SimdCrack::BlockProcessed(
 }
 
 void
-SimdCrack::ProcessContext(
-    PreimageContext* Context
-)
-{
-    Context->CheckAndHandle(
-        dispatch::bindf<ResultHandler>(
-            &SimdCrack::BlockProcessed,
-            this,
-            std::placeholders::_1,
-            std::placeholders::_2
-        )
-    );
-}
-
-void
 SimdCrack::GenerateBlock(
     PreimageContext* Context,
     const mpz_class  Start,
@@ -356,8 +331,13 @@ SimdCrack::GenerateBlocks(
             &index
         );
 
-        ProcessContext(
-            &ctx
+        ctx.CheckAndHandle(
+            dispatch::bindf<ResultHandler>(
+                &SimdCrack::BlockProcessed,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
         );
     }
 

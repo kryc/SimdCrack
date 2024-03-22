@@ -17,21 +17,21 @@
 #include <functional>
 #include <simdhash.h>
 
-#include "Algorithm.hpp"
-
 using ResultHandler = std::function<void(const std::vector<uint8_t>, const std::string)>;
 
 const size_t SIMD_COUNT = SimdLanes();
 
 class PreimageContext{
 public:
-	PreimageContext(const Algorithm Algo, const uint8_t* Targets, const size_t TargetCount);
+	PreimageContext(const HashAlgorithm Algo, const uint8_t* Targets, const size_t TargetCount);
 	~PreimageContext(void);
 	void   	Initialize(const size_t Length);
 	const bool	Initialized(void) const { return m_Length != (size_t)-1; };
 	void   	Reset(void);
-	void   	AddEntry(std::string& Value);
-	void   	AddEntry(std::string& Value, const size_t Index);
+	void    AddEntry(const char* Word, const size_t Length);
+	void   	AddEntry(const std::string& Value);
+	void    AddEntry(const char* Word, const size_t Length, const size_t Index);
+	void   	AddEntry(const std::string& Value, const size_t Index);
 	const std::string GetEntry(const size_t Index) const;
 	const size_t 	GetEntryCount(void) const;
 	const bool IsFull(void) const { return m_NextEntry == SIMD_COUNT; };
@@ -54,8 +54,8 @@ private:
 	size_t   	m_LastIndex = 0;
 	const uint8_t* m_Targets;
     size_t   m_TargetsCount;
-	size_t 	 m_HashWidth = SHA256_SIZE;
-	Algorithm m_Algorithm = Algorithm::sha256;
+	size_t 	 m_HashWidth;
+	HashAlgorithm m_Algorithm;
 	size_t   m_SimdLanes;
 };
 

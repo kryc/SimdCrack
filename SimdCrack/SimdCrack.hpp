@@ -16,12 +16,12 @@
 
 #include <gmpxx.h>
 
-#include "Algorithm.hpp"
 #include "PreimageContext.hpp"
 #include "Util.hpp"
 #include "WordGenerator.hpp"
 #include "DispatchQueue.hpp"
 #include "SharedRefptr.hpp"
+#include "simdhash.h"
 
 #ifndef SimdCrack_hpp
 #define SimdCrack_hpp
@@ -36,14 +36,13 @@ public:
     ~SimdCrack(void);
     void InitAndRun(void);
     void SetBlocksize(const size_t BlockSize) { m_Blocksize = BlockSize; };
-    void SetAlgorithm(const Algorithm Algo);
+    void SetAlgorithm(const HashAlgorithm Algo) { m_Algorithm = Algo; m_HashWidth = GetHashWidth(m_Algorithm); };
     void SetHashList(const std::filesystem::path File) { m_HashList = File; };
     void SetBinaryHashList(const std::filesystem::path File) { m_BinaryHashList = File; };
     void SetThreads(const size_t Threads) { m_Threads = Threads; };
     void SetOutFile(const std::filesystem::path Outfile) { m_Outfile = Outfile; }
     void SetResume(const mpz_class Resume) { m_Resume = Resume; };
 private:
-    void ProcessContext(PreimageContext* Context);
     void GenerateBlock(PreimageContext* Context, const mpz_class Start, const size_t Step, mpz_class* Next);
     void GenerateBlocks(const size_t ThreadId, const mpz_class Start, const size_t Step);
     void BlockProcessed(const std::vector<uint8_t> Hash, const std::string Result);
@@ -60,7 +59,7 @@ private:
     size_t m_Found = 0;
     size_t m_Threads = 0;
     size_t m_Blocksize = 500000;
-    Algorithm m_Algorithm = Algorithm::sha1;
+    HashAlgorithm m_Algorithm = HashUnknown;
     size_t m_HashWidth = SHA256_SIZE;
     std::filesystem::path m_HashList;
     std::filesystem::path m_BinaryHashList;

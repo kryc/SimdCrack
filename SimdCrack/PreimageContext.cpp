@@ -17,28 +17,16 @@
 #include "SimdCrack.hpp"
 
 PreimageContext::PreimageContext(
-	const Algorithm Algo,
+	const HashAlgorithm Algo,
 	const uint8_t* Targets,
 	const size_t TargetCount
 )
 {
 	m_Algorithm = Algo;
+	m_HashWidth = GetHashWidth(Algo);
 	m_Targets = Targets;
 	m_TargetsCount = TargetCount;
 	m_SimdLanes = SimdLanes();
-
-    if (m_Algorithm == Algorithm::sha256)
-    {
-        m_HashWidth = SHA256_SIZE;
-    }
-    else if (m_Algorithm == Algorithm::sha1)
-    {
-        m_HashWidth = SHA1_SIZE;
-    }
-    else if (m_Algorithm == Algorithm::md5)
-    {
-        m_HashWidth = MD5_SIZE;
-    }
 }
 
 void
@@ -81,28 +69,50 @@ PreimageContext::~PreimageContext(
 
 void
 PreimageContext::AddEntry(
-	std::string& Value
+	const char* Word,
+	const size_t Length
 )
 {
 	assert(!IsFull());
 	if (IsFull())
 		return;
 	
-	if (Value.size() != m_Length)
+	if (Length != m_Length)
 	{
 		std::cerr << "[!] Invalid length passed to AddEntry" << std::endl;
 		return;
 	}
 	
 	char* nextEntry = (char*)m_BufferPointers[m_NextEntry++];
-	memcpy(nextEntry, &Value[0], m_Length);
+	memcpy(nextEntry, Word, m_Length);
 }
 
 void
-PreimageContext::AddEntry(std::string& Value, const size_t Index)
+PreimageContext::AddEntry(
+	const std::string& Value
+)
+{
+	AddEntry(&Value[0], Value.size());
+}
+
+void
+PreimageContext::AddEntry(
+	const char* Word,
+	const size_t Length,
+	const size_t Index
+)
 {
 	m_LastIndex = Index;
-	AddEntry(Value);
+	AddEntry(Word, Length);
+}
+
+void
+PreimageContext::AddEntry(
+	const std::string& Value,
+	const size_t Index
+)
+{
+	AddEntry(&Value[0], Value.size(), Index);
 }
 
 const std::string
@@ -155,21 +165,21 @@ PreimageContext::CheckAndHandle(
 	SimdHashContext shaContext;
 	uint8_t hashes[m_HashWidth * SIMD_COUNT];
 
-	if (m_Algorithm == Algorithm::sha256)
+	if (m_Algorithm == HashSha256)
 	{
 		SimdSha256Init(&shaContext);
 		SimdHashUpdateAll(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
 		SimdSha256Finalize(&shaContext);
 		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
 	}
-	else if (m_Algorithm == Algorithm::sha1)
+	else if (m_Algorithm == HashSha1)
 	{
 		SimdSha1Init(&shaContext);
 		SimdHashUpdateAll(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
 		SimdSha1Finalize(&shaContext);
 		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
 	}
-	else if (m_Algorithm == Algorithm::md5)
+	else if (m_Algorithm == HashMd5)
 	{
 		SimdMd5Init(&shaContext);
 		SimdHashUpdateAll(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);

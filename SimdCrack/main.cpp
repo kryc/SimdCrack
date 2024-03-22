@@ -37,7 +37,7 @@ int main(
 	std::string charset;
 	std::string extra;
 	size_t blocksize;
-	Algorithm algo;
+	HashAlgorithm algo;
 	std::filesystem::path hashlist;
 	std::filesystem::path binaryHashlist;
 	size_t threads;
@@ -45,7 +45,7 @@ int main(
 	std::string resume;
 	mpz_class resumeIndex;
 
-	algo = Algorithm::sha256;
+	algo = HashUnknown;
 	threads = 0;
 	blocksize = 0;
 
@@ -165,15 +165,15 @@ int main(
 		}
 		else if (arg == "--sha256")
 		{
-			algo = Algorithm::sha256;
+			algo = HashSha256;
 		}
 		else if (arg == "--sha1")
 		{
-			algo = Algorithm::sha1;
+			algo = HashSha1;
 		}
 		else if (arg == "--md5")
 		{
-			algo = Algorithm::md5;
+			algo = HashMd5;
 		}
 		else if (arg == "--list" || arg == "-l")
 		{
