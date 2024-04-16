@@ -127,30 +127,12 @@ int main(
 				return 1;
 			}
 
-			std::string charset_str = argv[++i];
-			if (charset_str == "alphanumeric" || charset_str == "alnum")
+			std::string charset_str(argv[++i]);
+			charset = ParseCharset(charset_str);
+			if (charset == "")
 			{
-				charset = ALPHANUMERIC;
-			}
-			else if (charset_str == "alpha")
-			{
-				charset = ALPHA;
-			}
-			else if (charset_str == "lower")
-			{
-				charset = LOWER;
-			}
-			else if (charset_str == "upper")
-			{
-				charset = UPPER;
-			}
-			else if (charset_str == "numeric" || charset_str == "num")
-			{
-				charset = NUMERIC;
-			}
-			else if (charset_str == "ascii")
-			{
-				charset = ASCII;
+				std::cerr << "Unrecognised character set" << std::endl;
+				return 1;
 			}
 		}
 		else if (arg == "--extra" || arg == "-e")
