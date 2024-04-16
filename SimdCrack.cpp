@@ -217,11 +217,12 @@ SimdCrack::FoundResult(
     m_Found++;
 
     std::string hashstring;
-    hashstring.resize(MAX_BUFFER_SIZE * 2 + 1);
     for (size_t i = 0; i < Hash.size(); i++)
     {
-        // Sprintf is safe here as we know the buffer will always be big enough
-        snprintf(&hashstring[i * 2], hashstring.length() - (i * 2 + 1), "%02X", Hash[i]);
+        char buff[3];
+        snprintf(buff, sizeof(buff), "%02X", Hash[i]);
+        buff[2] = '\0';
+        hashstring += buff;
     }
 
     //
@@ -389,7 +390,7 @@ SimdCrack::ThreadPulse(
         }
         averageMs /= m_Threads;
         
-        double hashesPerSec = (double)(averageMs * m_Blocksize * SIMD_COUNT) / 1000.f;
+        double hashesPerSec = 1000.f * ((m_Blocksize * SIMD_COUNT) / averageMs);
         char multiplechar = ' ';
         if (hashesPerSec > 1000000000.f)
         {
@@ -406,7 +407,6 @@ SimdCrack::ThreadPulse(
             hashesPerSec /= 1000.f;
             multiplechar = 'k';
         }
-
 
         statusbuf[sizeof(statusbuf) - 1] = '\0';
         memset(statusbuf, '\b', sizeof(statusbuf) - 1);
