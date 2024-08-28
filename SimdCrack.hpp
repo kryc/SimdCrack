@@ -43,7 +43,7 @@ public:
     void SetOutFile(const std::filesystem::path Outfile) { m_Outfile = Outfile; }
     void SetResume(const mpz_class Resume) { m_Resume = Resume; };
 private:
-    void GenerateBlock(PreimageContext* Context, const mpz_class Start, const size_t Step, mpz_class* Next);
+    void GenerateBlock(PreimageContext* Context, mpz_class& Index, const size_t Step);
     void GenerateBlocks(const size_t ThreadId, const mpz_class Start, const size_t Step);
     void BlockProcessed(const std::vector<uint8_t> Hash, const std::string Result);
     void FoundResult(const std::vector<uint8_t> Hash, const std::string Result);

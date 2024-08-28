@@ -203,6 +203,13 @@ int main(
 	std::cerr << "Using character set: " << charset << std::endl;
 	
 	auto generator = WordGenerator(charset, prefix, postfix);
+
+	if (!resume.empty())
+	{
+		resumeIndex = generator.Parse(resume);
+		std::cout << "Resuming from '" << resume << "' (Index " << resumeIndex.get_str() << ") " << std::endl;
+	}
+
 	auto cracker = new SimdCrack(std::move(targets), std::move(generator));
 	cracker->SetAlgorithm(algo);
 	
@@ -233,7 +240,6 @@ int main(
 
 	if (!resume.empty())
 	{
-		resumeIndex = generator.Parse(resume);
 		cracker->SetResume(std::move(resumeIndex));
 	}
 

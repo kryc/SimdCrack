@@ -289,27 +289,23 @@ SimdCrack::BlockProcessed(
 void
 SimdCrack::GenerateBlock(
     PreimageContext* Context,
-    const mpz_class  Start,
-    const size_t Step,
-    mpz_class* Next
+    mpz_class&       Index,
+    const size_t     Step
 )
 {
-    mpz_class index(Start);
     size_t wordSize = 0;
     std::string word;
 
-    word = m_Generator.Generate(index);
+    word = m_Generator.Generate(Index);
     wordSize = word.size();
     Context->Initialize(wordSize);
 
     do
     {
-        index += Step;
+        Index += Step;
         Context->AddEntry(word);
-        word = m_Generator.Generate(index);
+        word = m_Generator.Generate(Index);
     } while (!Context->IsFull() && word.size() == wordSize);
-
-    *Next = index;
 }
 
 void
@@ -341,8 +337,7 @@ SimdCrack::GenerateBlocks(
         GenerateBlock(
             &ctx,
             index,
-            Step,
-            &index
+            Step
         );
 
         ctx.CheckAndHandle(
