@@ -169,9 +169,14 @@ SimdCrack::ProcessHashList(
         {
             std::cerr << "Madvise not happy" << std::endl;
         }
-        // Validate that the file is sorted
+        // Validate that the file is sorted and store offsets
+        m_TargetOffsets.resize(256);
+        m_TargetCounts.resize(256);
+        uint16_t current = m_Targets[0];
+        m_TargetOffsets[current] = m_Targets;
         for (size_t i = 0; i < m_TargetsCount - 1; i++)
         {
+            // Check sorted
             uint8_t* smaller = &m_Targets[i * m_HashWidth];
             uint8_t* larger = &m_Targets[(i + 1) * m_HashWidth];
             if (memcmp(smaller, larger, m_HashWidth) > 0)
@@ -179,6 +184,14 @@ SimdCrack::ProcessHashList(
                 std::cerr << "Binary hash list is not sorted. Exiting" << std::endl;
                 return false;
             }
+
+            // Update our offsets data
+            if (m_Targets[i * m_HashWidth] != current)
+            {
+                current = m_Targets[i * m_HashWidth];
+                m_TargetOffsets[current] = &m_Targets[i * m_HashWidth];
+            }
+            m_TargetCounts[current]++;
         }
     }
     else
@@ -309,8 +322,8 @@ SimdCrack::GenerateBlocks(
     std::string word;
     PreimageContext ctx(
         m_Algorithm,
-        m_Targets,
-        m_TargetsCount);
+        m_TargetOffsets,
+        m_TargetCounts);
     mpz_class index(Start);
 
     auto start = std::chrono::system_clock::now();

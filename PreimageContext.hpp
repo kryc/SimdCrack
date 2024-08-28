@@ -23,7 +23,7 @@ const size_t SIMD_COUNT = SimdLanes();
 
 class PreimageContext{
 public:
-	PreimageContext(const HashAlgorithm Algo, const uint8_t* Targets, const size_t TargetCount);
+	PreimageContext(const HashAlgorithm Algo, const std::vector<uint8_t*>& Targets, const std::vector<size_t>& TargetCounts);
 	~PreimageContext(void);
 	void   	Initialize(const size_t Length);
 	const bool	Initialized(void) const { return m_Length != (size_t)-1; };
@@ -37,7 +37,6 @@ public:
 	const bool IsFull(void) const { return m_NextEntry == SIMD_COUNT; };
 	const bool IsEmpty(void) const { return m_NextEntry == 0; };
 	const size_t Remaining(void) const { return SIMD_COUNT - m_NextEntry; };
-	bool   	Check(void);
 	void   	CheckAndHandle(ResultHandler Callback);
 	const std::string GetMatch(void) const { return m_Match; };
 	const bool 		Matched(void) const { return m_Matched; };
@@ -52,8 +51,8 @@ private:
 	std::string m_Match;
 	size_t 	 	m_Matched = 0;
 	size_t   	m_LastIndex = 0;
-	const uint8_t* m_Targets;
-    size_t   m_TargetsCount;
+	const std::vector<uint8_t*>& m_TargetOffsets;
+	const std::vector<size_t>& m_TargetCounts;
 	size_t 	 m_HashWidth;
 	HashAlgorithm m_Algorithm;
 	size_t   m_SimdLanes;

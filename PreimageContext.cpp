@@ -18,14 +18,12 @@
 
 PreimageContext::PreimageContext(
 	const HashAlgorithm Algo,
-	const uint8_t* Targets,
-	const size_t TargetCount
-)
+	const std::vector<uint8_t*>& Targets,
+	const std::vector<size_t>& TargetCounts
+) : m_TargetOffsets(Targets), m_TargetCounts(TargetCounts)
 {
 	m_Algorithm = Algo;
 	m_HashWidth = GetHashWidth(Algo);
-	m_Targets = Targets;
-	m_TargetsCount = TargetCount;
 	m_SimdLanes = SimdLanes();
 }
 
@@ -131,7 +129,7 @@ PreimageContext::GetEntryCount(
 	return m_NextEntry;
 }
 
-const uint8_t*
+inline const uint8_t*
 binary_search(
 	const uint8_t* arr,
 	const uint8_t* x,
@@ -192,16 +190,17 @@ PreimageContext::CheckAndHandle(
 	for (size_t index = 0; index < GetEntryCount(); index++)
 	{
 		// Binary search
+		uint8_t* hash = &hashes[index * m_HashWidth];
+		uint8_t firstbyte = hash[0];
 		auto found = binary_search(
-			m_Targets,
-			&hashes[index * m_HashWidth],
-			m_TargetsCount,
+			m_TargetOffsets[firstbyte],
+			hash,
+			m_TargetCounts[firstbyte],
 			m_HashWidth
 		);
 
 		if (found != nullptr)
 		{
-			// const uint8_t* foundhash = m_Targets + found * m_HashWidth;
 			std::vector<uint8_t> hash(found, found + m_HashWidth);
 			m_Match = std::string((char*)m_BufferPointers[index], m_Length);
 			Callback(std::move(hash), m_Match);

@@ -67,6 +67,8 @@ private:
     uint8_t* m_Targets = nullptr;
     size_t   m_TargetsAllocated;
     size_t   m_TargetsCount;
+    std::vector<uint8_t*> m_TargetOffsets;
+	std::vector<size_t> m_TargetCounts;
     size_t   m_BlocksCompleted;
     std::map<size_t, uint64_t> m_LastBlockMs;
     std::string m_LastWord;
