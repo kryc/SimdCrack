@@ -189,9 +189,9 @@ WordGenerator::Parse(
     mpz_class num;
     for (const char& c : Word)
     {
-        num = num * Charset.size() + Charset.find_first_of(c);
+        num = num * Charset.size() + (Charset.find_first_of(c) + 1);
     }
-    return ++num;
+    return num;
 }
 
 // static
@@ -204,9 +204,9 @@ WordGenerator::Parse(
     mpz_class num;
     for (const char& c : Word)
     {
-        num = num * LookupTable[256] + LookupTable[c];
+        num = num * LookupTable[256] + (LookupTable[c] + 1);
     }
-    return ++num;
+    return num;
 }
 
 // static
