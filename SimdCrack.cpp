@@ -382,12 +382,20 @@ SimdCrack::ThreadPulse(
     const std::string Last
 )
 {
-    char statusbuf[64];
+    char statusbuf[96];
 
     assert(dispatch::CurrentDispatcher() == dispatch::GetDispatcher("main").get());
 
     m_BlocksCompleted++;
     m_LastBlockMs[ThreadId] = BlockTime;
+
+    auto lastIndex = m_Generator.ParseReversed(Last);
+    // Get the upper and lower bound for this current length
+    auto lower = m_Generator.WordLengthIndex(Last.size());
+    auto upper = m_Generator.WordLengthIndex(Last.size() + 1);
+    mpz_class diff = (lastIndex - lower) / 1000000;
+    mpz_class outof = (upper - lower) / 1000000;
+    mpz_class percent = (diff / outof) * 100;
 
     if (!m_Outfile.empty())
     {
@@ -422,13 +430,16 @@ SimdCrack::ThreadPulse(
         memset(statusbuf, ' ', sizeof(statusbuf) - 1);
         int count = snprintf(
             statusbuf, sizeof(statusbuf),
-            "H/s:%.1lf%c C:%zu/%zu L:\"%s\" C:\"%s\"",
+            "H/s:%.1lf%c C:%zu/%zu L:\"%s\" C:\"%s\" #:%sM/%sM (%s%%)",
                 hashesPerSec,
                 multiplechar,
                 m_Found,
                 m_TargetsCount,
                 m_LastWord.c_str(),
-                Last.c_str()
+                Last.c_str(),
+                diff.get_str().c_str(),
+                outof.get_str().c_str(),
+                percent.get_str().c_str()
         );
         if (count < sizeof(statusbuf) - 1)
         {
