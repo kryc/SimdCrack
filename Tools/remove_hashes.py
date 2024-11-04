@@ -40,7 +40,7 @@ def process(target: str, cracked: str, output: str, nocheck:bool) -> int:
     if not nocheck:
         tf_count = count_lines(tf)
         cf_count = count_lines(cf)
-        
+
         if tf_count < cf_count:
             logging.critical('Target set muct be larger than cracked')
             return 1
