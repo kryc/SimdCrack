@@ -16,7 +16,11 @@ def parse(line: str) -> str:
 def read_and_parse(handle) -> str:
     result = None
     while result is None:
-        line = handle.readline()
+        try:
+            line = handle.readline()
+        except UnicodeDecodeError:
+            sys.stderr.write('Unable to decode line\n')
+            continue
         if line == '':
             return None
         result = parse(line)
@@ -31,10 +35,10 @@ def count_lines(file_handle) -> int:
             yield b
     return sum(bl.count('\n') for bl in blocks(file_handle))
 
-def process(target: str, cracked: str, output: str, nocheck:bool) -> int:
-    tf = open(target, 'r')
-    cf = open(cracked, 'r')
-    of = sys.stdout if output is None else open(output, 'wt')
+def process(target: str, cracked: str, output: str, nocheck: bool) -> int:
+    tf = open(target, 'r', encoding='utf8')
+    cf = open(cracked, 'r', encoding='utf8')
+    of = sys.stdout if output is None else open(output, 'wt', encoding='utf8')
 
     # Check the line counts
     if not nocheck:
