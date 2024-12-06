@@ -59,7 +59,7 @@ private:
     size_t m_Found = 0;
     size_t m_Threads = 0;
     size_t m_Blocksize = 500000;
-    HashAlgorithm m_Algorithm = HashUnknown;
+    HashAlgorithm m_Algorithm = HashAlgorithmUndefined;
     size_t m_HashWidth = SHA256_SIZE;
     std::filesystem::path m_HashList;
     std::filesystem::path m_BinaryHashList;

@@ -25,6 +25,13 @@
 #include "DispatchQueue.hpp"
 #include "SimdCrack.hpp"
 
+#define ARGCHECK() \
+    if (argc <= i) \
+    { \
+        std::cerr << "No value specified for " << arg << std::endl; \
+        return 1; \
+    }
+
 int main(
 	int argc,
 	const char * argv[]
@@ -45,7 +52,7 @@ int main(
 	std::string resume;
 	mpz_class resumeIndex;
 
-	algo = HashUnknown;
+	algo = HashAlgorithmUndefined;
 	threads = 0;
 	blocksize = 0;
 
@@ -65,68 +72,39 @@ int main(
 		std::string arg = argv[i];
 		if (arg == "--outfile" || arg == "-o")
 		{
-			if (argc <= i)
-			{
-				std::cerr << "No value specified for " << arg << std::endl;
-				return 1;
-			}
+			ARGCHECK();
 			outfile = argv[++i];
 		}
 		else if (arg == "--resume" || arg == "-r")
 		{
-			if (argc <= i)
-			{
-				std::cerr << "No value specified for " << arg << std::endl;
-				return 1;
-			}
+			ARGCHECK();
 			resume = argv[++i];
 		}
 		else if (arg == "--blocksize" || arg == "-b")
 		{
-			if (argc <= i)
-			{
-				std::cerr << "No value specified for " << arg << std::endl;
-				return 1;
-			}
+			ARGCHECK();
 			std::stringstream ss(argv[++i]);
 			ss >> blocksize;
 		}
 		else if (arg == "--threads" || arg == "-t")
 		{
-			if (argc <= i)
-			{
-				std::cerr << "No value specified for " << arg << std::endl;
-				return 1;
-			}
+			ARGCHECK();
 			std::stringstream ss(argv[++i]);
 			ss >> threads;
 		}
 		else if (arg == "--prefix" || arg == "-f")
 		{
-			if (argc <= i)
-			{
-				std::cerr << "No value specified for " << arg << std::endl;
-				return 1;
-			}
+			ARGCHECK();
 			prefix = argv[++i];
 		}
 		else if (arg == "--postfix" || arg == "-a")
 		{
-			if (argc == i)
-			{
-				std::cerr << "No value specified for " << arg << std::endl;
-				return 1;
-			}
+			ARGCHECK();
 			postfix = argv[++i];
 		}
 		else if (arg == "--charset" || arg == "-c")
 		{
-			if (argc == i)
-			{
-				std::cerr << "No value specified for " << arg << std::endl;
-				return 1;
-			}
-
+			ARGCHECK();
 			std::string charset_str(argv[++i]);
 			charset = ParseCharset(charset_str);
 			if (charset == "")
@@ -137,34 +115,29 @@ int main(
 		}
 		else if (arg == "--extra" || arg == "-e")
 		{
-			if (argc == i)
-			{
-				std::cerr << "No value specified for " << arg << std::endl;
-				return 1;
-			}
-
+			ARGCHECK();
 			extra = argv[++i];
 		}
 		else if (arg == "--sha256")
 		{
-			algo = HashSha256;
+			algo = HashAlgorithmSHA256;
 		}
 		else if (arg == "--sha1")
 		{
-			algo = HashSha1;
+			algo = HashAlgorithmSHA1;
 		}
 		else if (arg == "--md5")
 		{
-			algo = HashMd5;
+			algo = HashAlgorithmMD5;
+		}
+		else if (arg == "--algorithm")
+		{
+			ARGCHECK();
+			algo = ParseHashAlgorithm(argv[++i]);
 		}
 		else if (arg == "--list" || arg == "-l")
 		{
-			if (argc == i)
-			{
-				std::cerr << "No value specified for " << arg << std::endl;
-				return 1;
-			}
-
+			ARGCHECK();
 			hashlist = argv[++i];
 			if (!std::filesystem::exists(hashlist))
 			{
@@ -174,12 +147,7 @@ int main(
 		}
 		else if (arg == "--binarylist" || arg == "-bl")
 		{
-			if (argc == i)
-			{
-				std::cerr << "No value specified for " << arg << std::endl;
-				return 1;
-			}
-
+			ARGCHECK();
 			binaryHashlist = argv[++i];
 			if (!std::filesystem::exists(binaryHashlist))
 			{

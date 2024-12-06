@@ -160,31 +160,20 @@ PreimageContext::CheckAndHandle(
 	ResultHandler Callback
 )
 {
-	SimdHashContext shaContext;
-	uint8_t hashes[m_HashWidth * SIMD_COUNT];
+	uint8_t hashes[m_HashWidth * MAX_LANES];
+	size_t lengths[MAX_LANES];
 
-	if (m_Algorithm == HashSha256)
+	for (size_t i = 0; i < m_SimdLanes; i++)
 	{
-		SimdSha256Init(&shaContext);
-		SimdHashUpdateAll(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
-		SimdSha256Finalize(&shaContext);
-		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
-	}
-	else if (m_Algorithm == HashSha1)
-	{
-		SimdSha1Init(&shaContext);
-		SimdHashUpdateAll(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
-		SimdSha1Finalize(&shaContext);
-		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
-	}
-	else if (m_Algorithm == HashMd5)
-	{
-		SimdMd5Init(&shaContext);
-		SimdHashUpdateAll(&shaContext, m_Length, (const uint8_t**)&m_BufferPointers[0]);
-		SimdMd5Finalize(&shaContext);
-		SimdHashGetHashes(&shaContext, (uint8_t*)hashes);
+		lengths[i] = m_Length;
 	}
 
+	SimdHashOptimized(
+		m_Algorithm,
+		lengths,
+		(const uint8_t**)&m_BufferPointers[0],
+		hashes
+	);
 
 	// ssize_t found;
 	for (size_t index = 0; index < GetEntryCount(); index++)
