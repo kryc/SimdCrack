@@ -1,9 +1,9 @@
 //
 //  Util.cpp
-//  SimdCrack
+//  CrackList
 //
-//  Created by Kryc on 14/09/2020.
-//  Copyright © 2020 Kryc. All rights reserved.
+//  Created by Kryc on 11/08/2024.
+//  Copyright © 2024 Kryc. All rights reserved.
 //
 
 #include <vector>
@@ -15,7 +15,9 @@ namespace Util
 {
 
 std::vector<uint8_t>
-ParseHex(std::string HexString)
+ParseHex(
+	const std::string& HexString
+)
 {
 	std::vector<uint8_t> vec;
 	bool doingUpper = true;
@@ -53,5 +55,69 @@ ParseHex(std::string HexString)
 	return vec;
 }
 
+std::string
+ToHex(
+	const uint8_t* Bytes,
+	const size_t Length
+)
+{
+	char buffer[3];
+	std::string ret;
+
+	buffer[2] = '\0';
+
+	for (size_t i = 0; i < Length; i++)
+	{
+		snprintf(buffer, 3, "%02x", Bytes[i]);
+		ret.push_back(buffer[0]);
+		ret.push_back(buffer[1]);
+	}
+
+	return ret;
+}
+
+bool
+IsHex(
+	const std::string& String
+)
+{
+	// Detect an odd length string
+	if (String.size() & 1)
+	{
+		return false;
+	}
+
+	for (char c : String)
+	{
+		if (!isxdigit(c))
+		{
+			return false;
+		}
+	}
+	
+	return true;
+}
+
+std::string
+ToLower(
+    const std::string& String
+)
+{
+	std::string result;
+
+	for (char c : String)
+	{
+		if (c >= 'A' && c <= 'Z')
+		{
+			result.push_back(c + ('a' - 'A'));
+		}
+		else
+		{
+			result.push_back(c);
+		}
+	}
+
+	return result;
+}
 
 }

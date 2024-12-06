@@ -19,7 +19,6 @@
 #include <assert.h>
 #include <gmpxx.h>
 
-#include "PreimageContext.hpp"
 #include "Util.hpp"
 #include "WordGenerator.hpp"
 #include "DispatchQueue.hpp"

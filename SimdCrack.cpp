@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 
 #include "SimdCrack.hpp"
+#include "SimdHashBuffer.hpp"
 #include "SharedRefptr.hpp"
 #include "Util.hpp"
 #include "WordGenerator.hpp"
@@ -132,11 +133,11 @@ SimdCrack::ProcessHashList(
     m_TargetsCount = 0;
     m_Targets = (uint8_t*)malloc(1024 * m_HashWidth);
 
-    if (!m_HashList.empty())
+    if (!m_HashFile.empty())
     {
         std::cerr << "Processing hash list" << std::endl;
 
-        std::ifstream infile(m_HashList);
+        std::ifstream infile(m_HashFile);
         std::string line;
         while (std::getline(infile, line))
         {
@@ -154,44 +155,20 @@ SimdCrack::ProcessHashList(
     }
     else if (!m_BinaryHashList.empty())
     {
-        size_t len = std::filesystem::file_size(m_BinaryHashList);
-        m_TargetsCount = len / m_HashWidth;
+        m_TargetsSize = std::filesystem::file_size(m_BinaryHashList);
+        m_TargetsCount = m_TargetsSize / m_HashWidth;
         m_BinaryFd = fopen(m_BinaryHashList.c_str(), "rb");
-        m_Targets = (uint8_t*)mmap(nullptr, len, PROT_READ, MAP_SHARED, fileno(m_BinaryFd), 0);
+        m_Targets = (uint8_t*)mmap(nullptr, m_TargetsSize, PROT_READ, MAP_SHARED, fileno(m_BinaryFd), 0);
         if (m_Targets == MAP_FAILED)
         {
             std::cerr << "Error mapping hash list file" << std::endl;
             return false;
         }
         // Inform the kernel that we will be performing random accesses at all offsets
-        auto ret = madvise(m_Targets, len, MADV_RANDOM | MADV_WILLNEED);
+        auto ret = madvise(m_Targets, m_TargetsSize, MADV_RANDOM | MADV_WILLNEED);
         if (ret != 0)
         {
             std::cerr << "Madvise not happy" << std::endl;
-        }
-        // Validate that the file is sorted and store offsets
-        m_TargetOffsets.resize(256);
-        m_TargetCounts.resize(256);
-        uint16_t current = m_Targets[0];
-        m_TargetOffsets[current] = m_Targets;
-        for (size_t i = 0; i < m_TargetsCount - 1; i++)
-        {
-            // Check sorted
-            uint8_t* smaller = &m_Targets[i * m_HashWidth];
-            uint8_t* larger = &m_Targets[(i + 1) * m_HashWidth];
-            if (memcmp(smaller, larger, m_HashWidth) > 0)
-            {
-                std::cerr << "Binary hash list is not sorted. Exiting" << std::endl;
-                return false;
-            }
-
-            // Update our offsets data
-            if (m_Targets[i * m_HashWidth] != current)
-            {
-                current = m_Targets[i * m_HashWidth];
-                m_TargetOffsets[current] = &m_Targets[i * m_HashWidth];
-            }
-            m_TargetCounts[current]++;
         }
     }
     else
@@ -215,97 +192,47 @@ SimdCrack::ProcessHashList(
 #endif
     }
 
+    m_HashList.Initialize(
+        m_Targets,
+        m_TargetsSize,
+        m_HashWidth,
+        false
+    );
+
     return true;
 }
 
 void
-SimdCrack::FoundResult(
-    const std::vector<uint8_t> Hash,
-    const std::string Result
+SimdCrack::FoundResults(
+    std::vector<std::tuple<std::string, std::string>> Results
 )
 {
     assert(dispatch::CurrentDispatcher() == dispatch::GetDispatcher("main").get());
 
-    m_LastWord = Result;
-    m_Found++;
+    m_Found += Results.size();
 
-    std::string hashstring;
-    for (size_t i = 0; i < Hash.size(); i++)
-    {
-        char buff[3];
-        snprintf(buff, sizeof(buff), "%02X", Hash[i]);
-        buff[2] = '\0';
-        hashstring += buff;
+    // Output them
+    for (auto& [h, w] : Results){
+        if (m_OutfileStream.is_open())
+        {
+            m_OutfileStream << h << m_Separator << w << std::endl;
+        }
+        else
+        {
+            std::cout << h << m_Separator << w << std::endl;
+        }
     }
 
-    //
-    // Output it
-    //
-    if (m_OutfileStream.is_open())
-    {
-        m_OutfileStream << hashstring << " " << Result << std::endl;
-    }
-    else
-    {
-        std::cout << hashstring << " " << Result << std::endl;
-    }
-
-    //
-    // Check if we have found all
-    // targets
-    //
+    // Check if we have found all targets
     if (m_Found == m_TargetsCount)
     {
-        //
         // Stop the pool
-        //
         m_DispatchPool->Stop();
         m_DispatchPool->Wait();
 
-        //
         // Stop the current (main) dispatcher
-        //
         dispatch::CurrentDispatcher()->Stop();
     }
-}
-
-void
-SimdCrack::BlockProcessed(
-    const std::vector<uint8_t> Hash,
-    const std::string Result
-)
-{
-    dispatch::PostTaskToDispatcher(
-        "main",
-        dispatch::bind(
-            &SimdCrack::FoundResult,
-            this,
-            std::move(Hash),
-            Result
-        )
-    );
-}
-
-void
-SimdCrack::GenerateBlock(
-    PreimageContext* Context,
-    mpz_class&       Index,
-    const size_t     Step
-)
-{
-    size_t wordSize = 0;
-    std::string word;
-
-    word = m_Generator.Generate(Index);
-    wordSize = word.size();
-    Context->Initialize(wordSize);
-
-    do
-    {
-        Index += Step;
-        Context->AddEntry(word);
-        word = m_Generator.Generate(Index);
-    } while (!Context->IsFull() && word.size() == wordSize);
 }
 
 void
@@ -315,12 +242,10 @@ SimdCrack::GenerateBlocks(
     const size_t Step
 )
 {
-    std::string word;
-    PreimageContext ctx(
-        m_Algorithm,
-        m_TargetOffsets,
-        m_TargetCounts);
     mpz_class index(Start);
+    SimdHashBufferFixed<MAX_OPTIMIZED_BUFFER_SIZE> words;
+    std::array<uint8_t, MAX_HASH_SIZE * MAX_LANES> hashes;
+    std::vector<std::tuple<std::string, std::string>> results;
 
     auto start = std::chrono::system_clock::now();
 
@@ -334,24 +259,50 @@ SimdCrack::GenerateBlocks(
         counter++
     )
     {
-        GenerateBlock(
-            &ctx,
-            index,
-            Step
-        );
+        for (size_t i = 0; i < SimdLanes(); i++)
+        {
+            const size_t length = m_Generator.Generate((char*)words[i], MAX_OPTIMIZED_BUFFER_SIZE, index);
+            words.SetLength(i, length);
+            index += Step;
+        }
 
-        ctx.CheckAndHandle(
-            dispatch::bindf<ResultHandler>(
-                &SimdCrack::BlockProcessed,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
+        SimdHashOptimized(
+            m_Algorithm,
+            words.GetLengths(),
+            words.ConstBuffers(),
+            &hashes[0]
         );
+        
+        for (size_t i = 0; i < SimdLanes(); i++)
+        {
+            const uint8_t* hash = &hashes[i * m_HashWidth];
+            if (m_HashList.Lookup(hash))
+            {
+                results.push_back({
+                    Util::ToHex(hash, m_HashWidth),
+                    words.GetString(i)
+                });
+            }
+        }
+
+        if (!results.empty())
+        {
+            dispatch::PostTaskToDispatcher(
+                "main",
+                dispatch::bind(
+                    &SimdCrack::FoundResults,
+                    this,
+                    std::move(results)
+                )
+            );
+            results.clear();
+        }
     }
 
     auto end = std::chrono::system_clock::now();
     auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    
 
     dispatch::PostTaskToDispatcher(
         "main",
@@ -360,7 +311,7 @@ SimdCrack::GenerateBlocks(
             this,
             ThreadId,
             elapsed_ms.count(),
-            ctx.GetLastEntry()
+            words.GetString(SimdLanes() - 1)
         )
     );
 
@@ -406,7 +357,7 @@ SimdCrack::ThreadPulse(
         }
         averageMs /= m_Threads;
         
-        double hashesPerSec = 1000.f * ((m_Blocksize * SIMD_COUNT) / averageMs);
+        double hashesPerSec = 1000.f * ((m_Blocksize * SimdLanes()) / averageMs);
         char multiplechar = ' ';
         if (hashesPerSec > 1000000000.f)
         {
