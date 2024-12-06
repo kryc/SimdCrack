@@ -30,6 +30,19 @@ SimdCrack::~SimdCrack(
 }
 
 void
+SimdCrack::AddTarget(
+    const std::string& Target
+)
+{
+    if (!Util::IsHex(Target))
+    {
+        std::cerr << "Invalid hash target: " << Target << std::endl;
+        return;
+    }
+    m_Target.push_back(Util::ParseHex(Target));
+}
+
+void
 SimdCrack::InitAndRun(
     void
 )
@@ -39,17 +52,29 @@ SimdCrack::InitAndRun(
         m_Threads = std::thread::hardware_concurrency();
     }
 
+    m_Generator = WordGenerator(m_Charset, m_Prefix, m_Postfix);
+
+    m_Resume = m_Generator.WordLengthIndex(m_Min);
+
+    if (!m_ResumeString.empty())
+	{
+		m_Resume = m_Generator.Parse(m_ResumeString);
+		std::cout << "Resuming from '" << m_ResumeString << "' (Index " << m_Resume.get_str() << ") " << std::endl;
+	}
+
     if(!ProcessHashList())
     {
         return;
     }
+
+    std::cerr << "Using character set: " << m_Charset << std::endl;
 
     //
     // Open the output file handle
     //
     if(!m_Outfile.empty())
     {
-        m_OutfileStream.open(m_Outfile, std::ofstream::out);
+        m_OutfileStream.open(m_Outfile, std::ofstream::out | std::ofstream::app);
     }
 
     m_DispatchPool = dispatch::CreateDispatchPool("pool", m_Threads);
@@ -215,13 +240,15 @@ SimdCrack::FoundResults(
     for (auto& [h, w] : Results){
         if (m_OutfileStream.is_open())
         {
-            m_OutfileStream << h << m_Separator << w << std::endl;
+            m_OutfileStream << h << m_Separator << (m_Hexlify ? Util::Hexlify(w) : w) << std::endl;
         }
         else
         {
-            std::cout << h << m_Separator << w << std::endl;
+            std::cout << h << m_Separator << (m_Hexlify ? Util::Hexlify(w) : w) << std::endl;
         }
     }
+
+    m_LastWord = std::get<1>(Results.back());
 
     // Check if we have found all targets
     if (m_Found == m_TargetsCount)
@@ -249,10 +276,6 @@ SimdCrack::GenerateBlocks(
 
     auto start = std::chrono::system_clock::now();
 
-    //
-    // Generate _count_ blocks (contexts)
-    // and hash and check them
-    //
     for (
         size_t counter = 0;
         counter < m_Blocksize;
@@ -284,25 +307,22 @@ SimdCrack::GenerateBlocks(
                 });
             }
         }
-
-        if (!results.empty())
-        {
-            dispatch::PostTaskToDispatcher(
-                "main",
-                dispatch::bind(
-                    &SimdCrack::FoundResults,
-                    this,
-                    std::move(results)
-                )
-            );
-            results.clear();
-        }
     }
 
     auto end = std::chrono::system_clock::now();
     auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-    
+    if (!results.empty())
+    {
+        dispatch::PostTaskToDispatcher(
+            "main",
+            dispatch::bind(
+                &SimdCrack::FoundResults,
+                this,
+                std::move(results)
+            )
+        );
+    }
 
     dispatch::PostTaskToDispatcher(
         "main",
@@ -344,11 +364,12 @@ SimdCrack::ThreadPulse(
     // Get the upper and lower bound for this current length
     auto lower = m_Generator.WordLengthIndex(Last.size());
     auto upper = m_Generator.WordLengthIndex(Last.size() + 1);
-    mpz_class diff = (lastIndex - lower) / 1000000;
-    mpz_class outof = (upper - lower) / 1000000;
+    std::string diffch, ooch;
+    mpz_class diff = Util::NumFactor((lastIndex - lower), diffch);
+    mpz_class outof = Util::NumFactor((upper - lower), ooch);
     mpz_class percent = (diff / outof) * 100;
 
-    if (!m_Outfile.empty())
+    if (!m_Outfile.empty() && ThreadId == 0)
     {
         uint64_t averageMs = 0;
         for (auto const& [thread, val] : m_LastBlockMs)
@@ -357,23 +378,9 @@ SimdCrack::ThreadPulse(
         }
         averageMs /= m_Threads;
         
-        double hashesPerSec = 1000.f * ((m_Blocksize * SimdLanes()) / averageMs);
-        char multiplechar = ' ';
-        if (hashesPerSec > 1000000000.f)
-        {
-            hashesPerSec /= 1000000000.f;
-            multiplechar = 'b';
-        }
-        else if (hashesPerSec > 1000000.f)
-        {
-            hashesPerSec /= 1000000.f;
-            multiplechar = 'm';
-        }
-        else if (hashesPerSec > 1000.f)
-        {
-            hashesPerSec /= 1000.f;
-            multiplechar = 'k';
-        }
+        double hashesPerSec = (double)(m_Blocksize * 1000 * m_Threads) / averageMs;
+        std::string multiplechar;
+        hashesPerSec = Util::NumFactor(hashesPerSec, multiplechar);
 
         statusbuf[sizeof(statusbuf) - 1] = '\0';
         memset(statusbuf, '\b', sizeof(statusbuf) - 1);
@@ -381,15 +388,17 @@ SimdCrack::ThreadPulse(
         memset(statusbuf, ' ', sizeof(statusbuf) - 1);
         int count = snprintf(
             statusbuf, sizeof(statusbuf),
-            "H/s:%.1lf%c C:%zu/%zu L:\"%s\" C:\"%s\" #:%sM/%sM (%s%%)",
+            "H/s:%.1lf%s C:%zu/%zu L:\"%s\" C:\"%s\" #:%s%s/%s%s (%s%%)",
                 hashesPerSec,
-                multiplechar,
+                multiplechar.c_str(),
                 m_Found,
                 m_TargetsCount,
                 m_LastWord.c_str(),
                 Last.c_str(),
                 diff.get_str().c_str(),
+                diffch.c_str(),
                 outof.get_str().c_str(),
+                ooch.c_str(),
                 percent.get_str().c_str()
         );
         if (count < sizeof(statusbuf) - 1)

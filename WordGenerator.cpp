@@ -17,6 +17,17 @@
 
 #define D(val) (std::cout << "DBG: " << val << std::endl)
 
+WordGenerator& WordGenerator::operator=(
+    const WordGenerator& Other
+)
+{
+    m_Charset = Other.GetCharset();
+    m_Prefix = Other.GetPrefix();
+    m_Postfix = Other.GetPostFix();
+    m_LookupTable = Other.GetLookupTable();
+    return *this;
+}
+
 // Static
 std::string
 WordGenerator::GenerateWord(
@@ -294,6 +305,10 @@ ParseCharset(
     {
         return ALPHANUMERIC;
     }
+    else if (Name == "special" || Name == "punctuation")
+    {
+        return ASCII_SPECIAL;
+    }
     else if (Name == "common")
     {
         return COMMON;
@@ -302,5 +317,5 @@ ParseCharset(
     {
         return COMMON_SHORT;
     }
-    return ASCII;
+    return Name;
 }

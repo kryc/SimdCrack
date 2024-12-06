@@ -14,7 +14,6 @@
 #include <mutex>
 #include <atomic>
 #include <string>
-#include <sstream>
 #include <filesystem>
 #include <assert.h>
 #include <gmpxx.h>
@@ -35,25 +34,8 @@ int main(
 	int argc,
 	const char * argv[]
 )
-{
-	std::string prefix;
-	std::string postfix;
-	std::vector<uint8_t> target;
-	std::vector<std::vector<uint8_t>> targets;
-	std::string charset;
-	std::string extra;
-	size_t blocksize;
-	HashAlgorithm algo;
-	std::filesystem::path hashlist;
-	std::filesystem::path binaryHashlist;
-	size_t threads;
-	std::string outfile;
-	std::string resume;
-	mpz_class resumeIndex;
-
-	algo = HashAlgorithmUndefined;
-	threads = 0;
-	blocksize = 0;
+{	
+	SimdCrack simdcrack;
 
 	std::cerr << "SIMDCrack Hash Cracker" << std::endl;
 
@@ -63,8 +45,6 @@ int main(
 		std::cerr << "SIMD Lanes: " << SimdLanes() << std::endl;
 		return 0;
 	}
-	
-	charset = ASCII;
 
 	for (int i = 1; i < argc; i++)
 	{
@@ -72,142 +52,101 @@ int main(
 		if (arg == "--outfile" || arg == "-o")
 		{
 			ARGCHECK();
-			outfile = argv[++i];
+			simdcrack.SetOutFile(argv[++i]);
+		}
+		else if (arg == "--min")
+		{
+			ARGCHECK();
+			simdcrack.SetMin(atoi(argv[++i]));
+		}
+		else if (arg == "--max")
+		{
+			ARGCHECK();
+			simdcrack.SetMax(atoi(argv[++i]));
 		}
 		else if (arg == "--resume" || arg == "-r")
 		{
 			ARGCHECK();
-			resume = argv[++i];
+			simdcrack.SetResume(argv[++i]);
 		}
 		else if (arg == "--blocksize" || arg == "-b")
 		{
 			ARGCHECK();
-			std::stringstream ss(argv[++i]);
-			ss >> blocksize;
+			simdcrack.SetBlocksize(atoll(argv[++i]));
 		}
 		else if (arg == "--threads" || arg == "-t")
 		{
 			ARGCHECK();
-			std::stringstream ss(argv[++i]);
-			ss >> threads;
+			simdcrack.SetThreads(atoll(argv[++i]));
 		}
 		else if (arg == "--prefix" || arg == "-f")
 		{
 			ARGCHECK();
-			prefix = argv[++i];
+			simdcrack.SetPrefix(argv[++i]);
 		}
 		else if (arg == "--postfix" || arg == "-a")
 		{
 			ARGCHECK();
-			postfix = argv[++i];
+			simdcrack.SetPostfix(argv[++i]);
 		}
 		else if (arg == "--charset" || arg == "-c")
 		{
 			ARGCHECK();
-			std::string charset_str(argv[++i]);
-			charset = ParseCharset(charset_str);
-			if (charset == "")
-			{
-				std::cerr << "Unrecognised character set" << std::endl;
-				return 1;
-			}
+			simdcrack.SetCharset(argv[++i]);
 		}
 		else if (arg == "--extra" || arg == "-e")
 		{
 			ARGCHECK();
-			extra = argv[++i];
+			simdcrack.SetExtra(argv[++i]);
 		}
 		else if (arg == "--sha256")
 		{
-			algo = HashAlgorithmSHA256;
+			simdcrack.SetAlgorithm(HashAlgorithmSHA256);
 		}
 		else if (arg == "--sha1")
 		{
-			algo = HashAlgorithmSHA1;
+			simdcrack.SetAlgorithm(HashAlgorithmSHA1);
 		}
 		else if (arg == "--md5")
 		{
-			algo = HashAlgorithmMD5;
+			simdcrack.SetAlgorithm(HashAlgorithmMD5);
+		}
+		else if (arg == "--md4")
+		{
+			simdcrack.SetAlgorithm(HashAlgorithmMD4);
 		}
 		else if (arg == "--algorithm")
 		{
 			ARGCHECK();
-			algo = ParseHashAlgorithm(argv[++i]);
+			simdcrack.SetAlgorithm(ParseHashAlgorithm(argv[++i]));
 		}
 		else if (arg == "--list" || arg == "-l")
 		{
 			ARGCHECK();
-			hashlist = argv[++i];
+			std::string hashlist = argv[++i];
 			if (!std::filesystem::exists(hashlist))
 			{
 				std::cerr << "Hash list file not found " << hashlist << std::endl;
 				return 1;
 			}
+			simdcrack.SetHashList(hashlist);
 		}
 		else if (arg == "--binarylist" || arg == "-bl")
 		{
 			ARGCHECK();
-			binaryHashlist = argv[++i];
+			std::string binaryHashlist = argv[++i];
 			if (!std::filesystem::exists(binaryHashlist))
 			{
 				std::cerr << "Hash list file not found " << binaryHashlist << std::endl;
 				return 1;
 			}
+			simdcrack.SetBinaryHashList(binaryHashlist);
 		}
 		else
 		{
 			assert(arg[0] != '-');
-			target = Util::ParseHex(arg);
-			targets.push_back(target);
+			simdcrack.AddTarget(arg);
 		}
-	}
-
-	//
-	// Append any extra characters
-	//
-	charset += extra;
-
-	std::cerr << "Using character set: " << charset << std::endl;
-	
-	auto generator = WordGenerator(charset, prefix, postfix);
-
-	if (!resume.empty())
-	{
-		resumeIndex = generator.Parse(resume);
-		std::cout << "Resuming from '" << resume << "' (Index " << resumeIndex.get_str() << ") " << std::endl;
-	}
-
-	auto cracker = new SimdCrack(std::move(targets), std::move(generator));
-	cracker->SetAlgorithm(algo);
-	
-	if (!hashlist.empty())
-	{
-		cracker->SetHashList(hashlist);
-	}
-
-	if (!binaryHashlist.empty())
-	{
-		cracker->SetBinaryHashList(binaryHashlist);
-	}
-	
-	if (blocksize != 0)
-	{
-		cracker->SetBlocksize(blocksize);
-	}
-
-	if (threads != 0)
-	{
-		cracker->SetThreads(threads);
-	}
-
-	if (!outfile.empty())
-	{
-		cracker->SetOutFile(outfile);
-	}
-
-	if (!resume.empty())
-	{
-		cracker->SetResume(std::move(resumeIndex));
 	}
 
 	//
@@ -217,7 +156,7 @@ int main(
 		"main",
 		dispatch::bind(
 			&SimdCrack::InitAndRun,
-			cracker
+			&simdcrack
 		)
 	);
 
