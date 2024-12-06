@@ -19,25 +19,15 @@ SET(CMAKE_CXX_COMPILER clang++)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# set compiler flags
-if (NOT AVX OR AVX STREQUAL "" OR AVX STREQUAL "256")
-    set(AVXFLAG "-mavx2" CACHE STRING "" FORCE)
-elseif(AVX STREQUAL "512")
-    set(AVXFLAG "-mavx512bw" CACHE STRING "" FORCE)
-endif()
-
-set(CMAKE_CXX_FLAGS "-Wall -Werror ${AVXFLAG}")
-set(CMAKE_EXE_LINKER_FLAGS "${AVXFLAG} -lpthread -lgmpxx -lgmp")
+set(CMAKE_CXX_FLAGS "-Wall -Werror -fno-exceptions")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -funroll-loops")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -ggdb -O0 -fno-omit-frame-pointer -DDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -ggdb -O0 -fno-omit-frame-pointer -fsanitize=address -DDEBUG -DDEBUGINFO")
 
 if(APPLE)
-    set(HOMEBREW_PREFIX "/usr/local" CACHE PATH "Path to Homebrew installation")
-    set(HOMEBREW_INCLUDE ${HOMEBREW_PREFIX}/include)
-    include_directories(/usr/local/include)
-    link_directories(/usr/local/lib)
-else()
-    set(HOMEBREW_INCLUDE "")
+    execute_process(COMMAND brew --prefix OUTPUT_VARIABLE HOMEBREW_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message("Homebrew prefix: ${HOMEBREW_PREFIX}")
+    include_directories(${HOMEBREW_PREFIX}/include)
+    link_directories(${HOMEBREW_PREFIX}/lib)
 endif()
 
 file(GLOB SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
@@ -48,4 +38,4 @@ target_include_directories(simdcrack
                                 ./SimdHash/src/
                                 ./libdispatchqueue/include/
                         )
-target_link_libraries(simdcrack simdhash dispatchqueue)
+target_link_libraries(simdcrack gmp gmpxx simdhash dispatchqueue)
