@@ -335,10 +335,26 @@ HashList::Lookup(
     }
 }
 
+#ifdef __APPLE__
+int
+Compare(
+    void* Length,
+    const void* Value1,
+    const void* Value2
+)
+{
+    return memcmp(Value1, Value2, (size_t)Length);
+}
+#endif
+
 void
 HashList::Sort(
     void
 )
 {
+#ifdef __APPLE__
+    qsort_r(m_Targets, m_TargetsCount, m_HashWidth, (void*)m_HashWidth, Compare);
+#else
     qsort_r(m_Base, m_Count, m_DigestLength, (__compar_d_fn_t)memcmp, (void*)m_DigestLength);
+#endif
 }

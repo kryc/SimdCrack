@@ -18,7 +18,7 @@ SimdCrack::~SimdCrack(
     void
 )
 {
-    if (m_BinaryFd != nullptr)
+    if (m_BinaryFd == nullptr)
     {
         free(m_Targets);
     }
@@ -27,19 +27,6 @@ SimdCrack::~SimdCrack(
         munmap(m_Targets, m_TargetsCount * m_HashWidth);
         fclose(m_BinaryFd);
     }
-}
-
-void
-SimdCrack::AddTarget(
-    const std::string& Target
-)
-{
-    if (!Util::IsHex(Target))
-    {
-        std::cerr << "Invalid hash target: " << Target << std::endl;
-        return;
-    }
-    m_Target.push_back(Util::ParseHex(Target));
 }
 
 void
@@ -55,6 +42,8 @@ SimdCrack::InitAndRun(
     m_Generator = WordGenerator(m_Charset, m_Prefix, m_Postfix);
 
     m_Resume = m_Generator.WordLengthIndex(m_Min);
+
+    m_Limit = m_Generator.WordLengthIndex(m_Max + 1);
 
     if (!m_ResumeString.empty())
 	{
@@ -137,32 +126,38 @@ SimdCrack::AddHashToList(
     return AddHashToList(&nexthash[0]);
 }
 
-#ifdef __APPLE__
-int
-Compare(
-    void* Length,
-    const void* Value1,
-    const void* Value2
+bool
+ValidHexHashes(
+    std::vector<std::string> Hashes
 )
 {
-    return memcmp(Value1, Value2, (size_t)Length);
+    for (auto & hex : Hashes)
+    {
+        if (!Util::IsHex(hex))
+        {
+            return false;
+        }
+    }
+    return true;
 }
-#endif
 
 bool
 SimdCrack::ProcessHashList(
     void
 )
 {
-    m_TargetsAllocated = 1024;
-    m_TargetsCount = 0;
-    m_Targets = (uint8_t*)malloc(1024 * m_HashWidth);
+    if (m_Target.empty())
+    {
+        std::cerr << "No target specified" << std::endl;
+        return false;
+    }
 
-    if (!m_HashFile.empty())
+    std::filesystem::path targetPath = m_Target.at(0);
+
+    if (m_Target.size() == 1 && targetPath.extension() == ".txt")
     {
         std::cerr << "Processing hash list" << std::endl;
-
-        std::ifstream infile(m_HashFile);
+        std::ifstream infile(targetPath);
         std::string line;
         while (std::getline(infile, line))
         {
@@ -177,12 +172,19 @@ SimdCrack::ProcessHashList(
                 return false;
             }
         }
+
+        m_HashList.Initialize(
+            m_Targets,
+            m_TargetsSize,
+            m_HashWidth,
+            true
+        );
     }
-    else if (!m_BinaryHashList.empty())
+    else if (m_Target.size() == 1 && targetPath.extension() == ".bin")
     {
-        m_TargetsSize = std::filesystem::file_size(m_BinaryHashList);
+        m_TargetsSize = std::filesystem::file_size(targetPath);
         m_TargetsCount = m_TargetsSize / m_HashWidth;
-        m_BinaryFd = fopen(m_BinaryHashList.c_str(), "rb");
+        m_BinaryFd = fopen(targetPath.c_str(), "rb");
         m_Targets = (uint8_t*)mmap(nullptr, m_TargetsSize, PROT_READ, MAP_SHARED, fileno(m_BinaryFd), 0);
         if (m_Targets == MAP_FAILED)
         {
@@ -195,8 +197,15 @@ SimdCrack::ProcessHashList(
         {
             std::cerr << "Madvise not happy" << std::endl;
         }
+
+        m_HashList.Initialize(
+            m_Targets,
+            m_TargetsSize,
+            m_HashWidth,
+            false
+        );
     }
-    else
+    else if (ValidHexHashes(m_Target))
     {
         for (auto& target : m_Target)
         {
@@ -205,24 +214,19 @@ SimdCrack::ProcessHashList(
                 return false;
             }
         }
-    }
 
-    if (m_BinaryHashList.empty())
+        m_HashList.Initialize(
+            m_Targets,
+            m_TargetsSize,
+            m_HashWidth,
+            true
+        );
+    }
+    else
     {
-        std::cerr << "Sorting hashes" << std::endl;
-#ifdef __APPLE__
-        qsort_r(m_Targets, m_TargetsCount, m_HashWidth, (void*)m_HashWidth, Compare);
-#else
-        qsort_r(m_Targets, m_TargetsCount, m_HashWidth, (__compar_d_fn_t)memcmp, (void*)m_HashWidth);
-#endif
+        std::cerr << "Invalid target specified" << std::endl;
+        return false;
     }
-
-    m_HashList.Initialize(
-        m_Targets,
-        m_TargetsSize,
-        m_HashWidth,
-        false
-    );
 
     return true;
 }
@@ -263,6 +267,27 @@ SimdCrack::FoundResults(
 }
 
 void
+SimdCrack::ThreadCompleted(
+    const size_t ThreadId
+)
+{
+    m_ThreadsCompleted++;
+    if (m_ThreadsCompleted == m_Threads)
+    {
+        std::cerr << std::endl << "Input space exhausted" << std::endl;
+        // Stop the pool
+        if (m_DispatchPool != nullptr)
+        {
+            m_DispatchPool->Stop();
+            m_DispatchPool->Wait();
+        }
+
+        // Stop the current (main) dispatcher
+        dispatch::CurrentDispatcher()->Stop();
+    }
+}
+
+void
 SimdCrack::GenerateBlocks(
     const size_t ThreadId,
     const mpz_class Start,
@@ -274,18 +299,32 @@ SimdCrack::GenerateBlocks(
     std::array<uint8_t, MAX_HASH_SIZE * MAX_LANES> hashes;
     std::vector<std::tuple<std::string, std::string>> results;
 
+    // Check if we should end
+    if (index >= m_Limit)
+    {
+        dispatch::PostTaskToDispatcher(
+            "main",
+            dispatch::bind(
+                &SimdCrack::ThreadCompleted,
+                this,
+                ThreadId
+            )
+        );
+        return;
+    }
+
     auto start = std::chrono::system_clock::now();
 
     for (
         size_t counter = 0;
-        counter < m_Blocksize;
+        counter < m_Blocksize && index < m_Limit;
         counter++
     )
     {
         for (size_t i = 0; i < SimdLanes(); i++)
         {
-            const size_t length = m_Generator.Generate((char*)words[i], MAX_OPTIMIZED_BUFFER_SIZE, index);
-            words.SetLength(i, length);
+            const std::string word = m_Generator.Generate(index);
+            words.Set(i, word);
             index += Step;
         }
 
@@ -331,7 +370,7 @@ SimdCrack::GenerateBlocks(
             this,
             ThreadId,
             elapsed_ms.count(),
-            words.GetString(SimdLanes() - 1)
+            index
         )
     );
 
@@ -350,7 +389,7 @@ void
 SimdCrack::ThreadPulse(
     const size_t ThreadId,
     const uint64_t BlockTime,
-    const std::string Last
+    const mpz_class Last
 )
 {
     char statusbuf[96];
@@ -360,17 +399,19 @@ SimdCrack::ThreadPulse(
     m_BlocksCompleted++;
     m_LastBlockMs[ThreadId] = BlockTime;
 
-    auto lastIndex = m_Generator.ParseReversed(Last);
-    // Get the upper and lower bound for this current length
-    auto lower = m_Generator.WordLengthIndex(Last.size());
-    auto upper = m_Generator.WordLengthIndex(Last.size() + 1);
-    std::string diffch, ooch;
-    mpz_class diff = Util::NumFactor((lastIndex - lower), diffch);
-    mpz_class outof = Util::NumFactor((upper - lower), ooch);
-    mpz_class percent = (diff / outof) * 100;
-
     if (!m_Outfile.empty() && ThreadId == 0)
     {
+        // Get the upper and lower bound for this current length
+        std::string diffch, ooch;
+        auto lower = m_Generator.WordLengthIndex(m_Min);
+        auto upper = m_Generator.WordLengthIndex(m_Max + 1);
+
+        mpz_class diff = Last - lower;
+        mpz_class outof = upper - lower;
+        mpf_class percent = (mpf_class(diff) * 100)/ outof;
+        diff = Util::NumFactor(diff, diffch);
+        outof = Util::NumFactor(outof, ooch);
+
         uint64_t averageMs = 0;
         for (auto const& [thread, val] : m_LastBlockMs)
         {
@@ -388,18 +429,18 @@ SimdCrack::ThreadPulse(
         memset(statusbuf, ' ', sizeof(statusbuf) - 1);
         int count = snprintf(
             statusbuf, sizeof(statusbuf),
-            "H/s:%.1lf%s C:%zu/%zu L:\"%s\" C:\"%s\" #:%s%s/%s%s (%s%%)",
+            "H/s:%.1lf%s C:%zu/%zu L:\"%s\" C:\"%s\" #:%s%s/%s%s (%.1lf%%)",
                 hashesPerSec,
                 multiplechar.c_str(),
                 m_Found,
                 m_TargetsCount,
                 m_LastWord.c_str(),
-                Last.c_str(),
+                m_Generator.Generate(Last).c_str(),
                 diff.get_str().c_str(),
                 diffch.c_str(),
                 outof.get_str().c_str(),
                 ooch.c_str(),
-                percent.get_str().c_str()
+                percent.get_d()
         );
         if (count < sizeof(statusbuf) - 1)
         {

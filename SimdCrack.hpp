@@ -34,8 +34,6 @@ public:
     void InitAndRun(void);
     void SetBlocksize(const size_t BlockSize) { m_Blocksize = BlockSize; }
     void SetAlgorithm(const HashAlgorithm Algo) { m_Algorithm = Algo; m_HashWidth = GetHashWidth(m_Algorithm); }
-    void SetHashList(const std::filesystem::path File) { m_HashFile = File; }
-    void SetBinaryHashList(const std::filesystem::path File) { m_BinaryHashList = File; }
     void SetThreads(const size_t Threads) { m_Threads = Threads; }
     void SetOutFile(const std::filesystem::path Outfile) { m_Outfile = Outfile; }
     void SetResume(const std::string& Resume) { m_ResumeString = Resume; }
@@ -43,7 +41,7 @@ public:
     void SetPostfix(const std::string& Postfix) { m_Postfix = Postfix; }
     void SetCharset(const std::string& Charset) { m_Charset = ParseCharset(Charset); }
     void SetExtra(const std::string& Charset) { m_Charset += ParseCharset(Charset); }
-    void AddTarget(const std::string& Target);
+    void AddTarget(const std::string& Target) { m_Target.push_back(Target); }
     void SetMin(const size_t Min) { m_Min = Min; }
     void SetMax(const size_t Max) { m_Max = Max; }
 private:
@@ -52,10 +50,11 @@ private:
     bool ProcessHashList(void);
     bool AddHashToList(const std::string Hash);
     bool AddHashToList(const uint8_t* Hash);
-    void ThreadPulse(const size_t ThreadId, const uint64_t BlockTime, const std::string Last);
+    void ThreadPulse(const size_t ThreadId, const uint64_t BlockTime, const mpz_class Last);
+    void ThreadCompleted(const size_t ThreadId);
 
     dispatch::DispatcherPoolPtr m_DispatchPool;
-    std::vector<std::vector<uint8_t>> m_Target;
+    std::vector<std::string> m_Target;
     bool m_Hexlify = true;
     HashList m_HashList;
     WordGenerator m_Generator;
@@ -64,13 +63,11 @@ private:
     size_t m_Blocksize = 512;
     HashAlgorithm m_Algorithm = HashAlgorithmUndefined;
     size_t m_HashWidth = SHA256_SIZE;
-    std::filesystem::path m_HashFile;
-    std::filesystem::path m_BinaryHashList;
     FILE* m_BinaryFd = nullptr;
     uint8_t* m_Targets = nullptr;
     size_t   m_TargetsSize;
-    size_t   m_TargetsAllocated;
-    size_t   m_TargetsCount;
+    size_t   m_TargetsAllocated = 0;
+    size_t   m_TargetsCount = 0;
     std::vector<uint8_t*> m_TargetOffsets;
 	std::vector<size_t> m_TargetCounts;
     size_t   m_BlocksCompleted;
@@ -85,6 +82,8 @@ private:
     std::string m_ResumeString;
     size_t m_Min = 1;
     size_t m_Max = MAX_OPTIMIZED_BUFFER_SIZE;
+    mpz_class m_Limit;
+    size_t m_ThreadsCompleted = 0;
     char m_Separator = ':';
 };
 

@@ -120,28 +120,6 @@ int main(
 			ARGCHECK();
 			simdcrack.SetAlgorithm(ParseHashAlgorithm(argv[++i]));
 		}
-		else if (arg == "--list" || arg == "-l")
-		{
-			ARGCHECK();
-			std::string hashlist = argv[++i];
-			if (!std::filesystem::exists(hashlist))
-			{
-				std::cerr << "Hash list file not found " << hashlist << std::endl;
-				return 1;
-			}
-			simdcrack.SetHashList(hashlist);
-		}
-		else if (arg == "--binarylist" || arg == "-bl")
-		{
-			ARGCHECK();
-			std::string binaryHashlist = argv[++i];
-			if (!std::filesystem::exists(binaryHashlist))
-			{
-				std::cerr << "Hash list file not found " << binaryHashlist << std::endl;
-				return 1;
-			}
-			simdcrack.SetBinaryHashList(binaryHashlist);
-		}
 		else
 		{
 			assert(arg[0] != '-');
