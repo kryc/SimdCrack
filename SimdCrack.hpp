@@ -44,6 +44,12 @@ public:
     void AddTarget(const std::string& Target) { m_Target.push_back(Target); }
     void SetMin(const size_t Min) { m_Min = Min; }
     void SetMax(const size_t Max) { m_Max = Max; }
+    void SetSeparator(const char Separator) { m_Separator = Separator; }
+    void SetBitmaskSize(const size_t BitmaskSize) { m_BitmaskSize = BitmaskSize; }
+    void SetHexlify(const bool Hexlify) { m_Hexlify = Hexlify; }
+    const size_t GetBitmaskSize(void) const { return m_BitmaskSize; }
+    const char GetSeparator(void) const { return m_Separator; }
+    const bool GetHexlify(void) const { return m_Hexlify; }
 private:
     void GenerateBlocks(const size_t ThreadId, const mpz_class Start, const size_t Step);
     void FoundResults(std::vector<std::tuple<std::string, std::string>> Results);
@@ -85,6 +91,7 @@ private:
     mpz_class m_Limit;
     size_t m_ThreadsCompleted = 0;
     char m_Separator = ':';
+    size_t m_BitmaskSize = 16;
 };
 
 #endif // SimdCrack_hpp

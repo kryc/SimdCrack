@@ -99,6 +99,11 @@ int main(
 			ARGCHECK();
 			simdcrack.SetExtra(argv[++i]);
 		}
+		else if (arg == "--bitmask")
+		{
+			ARGCHECK();
+			simdcrack.SetBitmaskSize(atoi(argv[++i]));
+		}
 		else if (arg == "--sha256")
 		{
 			simdcrack.SetAlgorithm(HashAlgorithmSHA256);

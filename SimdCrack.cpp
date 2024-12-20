@@ -154,6 +154,8 @@ SimdCrack::ProcessHashList(
 
     std::filesystem::path targetPath = m_Target.at(0);
 
+    m_HashList.SetBitmaskSize(m_BitmaskSize);
+
     if (m_Target.size() == 1 && targetPath.extension() == ".txt")
     {
         std::cerr << "Processing hash list" << std::endl;
