@@ -136,7 +136,7 @@ HashList::InitializeInternal(
     }
 
     // Build lookup table
-    std::cerr << "Indexing hash table" << std::endl;
+    std::cerr << "Indexing hash table. " << std::flush;
 
     // Zero the lengths
     memset(m_MappedTableLookupSize, 0, sizeof(m_MappedTableLookupSize));
